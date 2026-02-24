@@ -453,7 +453,11 @@ export default function UitleggenClient({
                                     )}
                                     <div className="flex flex-col items-center text-center space-y-4">
                                         <div className="p-4 bg-white/5 rounded-2xl">
-                                            <BuoyIcon color={getBuoyDisplayColor(buoy)} size="md" />
+                                            <BuoyIcon
+                                                color={getBuoyDisplayColor(buoy)}
+                                                type={buoy.metadata?.boei_soort || buoy.metadata?.soort || 'standaard'}
+                                                size="lg"
+                                            />
                                         </div>
                                         <div>
                                             <div className="font-black text-app-text-primary uppercase tracking-tight leading-tight">{buoy.name}</div>
@@ -705,7 +709,11 @@ export default function UitleggenClient({
                                 {formData.buoyId && (
                                     <div className="flex items-center justify-between p-3 bg-app-surface rounded-xl text-xs border border-app-border/50 shadow-sm">
                                         <div className="flex items-center gap-3">
-                                            <BuoyIcon color={getBuoyDisplayColor(selectedBuoy)} size="sm" />
+                                            <BuoyIcon
+                                                color={getBuoyDisplayColor(selectedBuoy)}
+                                                type={selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
+                                                size="sm"
+                                            />
                                             <span className="text-app-text-secondary font-medium">Boei</span>
                                         </div>
                                         <span className="font-black text-app-text-primary truncate ml-4 uppercase tracking-tighter">{selectedBuoy?.name}</span>
@@ -791,7 +799,11 @@ export default function UitleggenClient({
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-xl bg-app-surface border border-app-border flex items-center justify-center">
-                                                <BuoyIcon color={getBuoyDisplayColor(selectedBuoy)} size="md" />
+                                                <BuoyIcon
+                                                    color={getBuoyDisplayColor(selectedBuoy)}
+                                                    type={selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
+                                                    size="md"
+                                                />
                                             </div>
                                             <div className="flex-1">
                                                 <div className="text-[10px] text-app-text-secondary font-bold uppercase tracking-widest">Boei</div>
