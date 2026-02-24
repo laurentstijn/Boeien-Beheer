@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+@theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Primary Accent: Favicon Blue (#186d8a) */
+  --color-blue-50: #f0f8fb;
+  --color-blue-100: #dbf0f6;
+  --color-blue-200: #bce1eb;
+  --color-blue-300: #8dcadd;
+  --color-blue-400: #55a9c5;
+  --color-blue-500: #358dae;
+  --color-blue-600: #186d8a;
+  --color-blue-700: #255c74;
+  --color-blue-800: #254d60;
+  --color-blue-900: #234151;
+  --color-blue-950: #142a36;
+
+  /* Semantic Theme Colors */
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  --color-app-surface-hover: var(--app-surface-hover);
+  --color-app-border: var(--app-border);
+  --color-app-text-primary: var(--app-text-primary);
+  --color-app-text-secondary: var(--app-text-secondary);
+  --color-app-header-bg: var(--app-header-bg);
+  --color-app-sidebar-bg: var(--app-sidebar-bg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --app-bg: #f5f5f5;
+  --app-surface: #ffffff;
+  --app-surface-hover: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-text-primary: #0f172a;
+  --app-text-secondary: #64748b;
+  --app-header-bg: #ffffff;
+  --app-sidebar-bg: #ffffff;
+}
+
+[data-theme="light"] {
+  --app-bg: #f5f5f5;
+  --app-surface: #ffffff;
+  --app-surface-hover: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-text-primary: #0f172a;
+  --app-text-secondary: #64748b;
+  --app-header-bg: #ffffff;
+  --app-sidebar-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+  --app-bg: #0e2163;
+  --app-surface: #08174c;
+  --app-surface-hover: #1b2a4a;
+  --app-border: #1b2a4a;
+  --app-text-primary: #f8fafc;
+  --app-text-secondary: #dee7f4;
+  --app-header-bg: #0b1c51;
+  --app-sidebar-bg: #0b1c51;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  color: var(--app-text-primary);
+  background: var(--app-bg);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hide navigation when viewing a report */
+body:has([data-rapport-page]) aside,
+body:has([data-rapport-page]) header {
+  display: none !important;
+}
+
+body:has([data-rapport-page]) main {
+  padding: 0 !important;
+}
+
+body:has([data-rapport-page]) main>div {
+  height: auto !important;
+  overflow: visible !important;
 }
