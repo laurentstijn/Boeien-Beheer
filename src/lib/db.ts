@@ -605,6 +605,8 @@ export async function deployBuoy(data: {
     const nextServiceDate = new Date(deploymentDate);
     nextServiceDate.setMonth(nextServiceDate.getMonth() + 6);
 
+    const activeZone = await getZoneFilter();
+
     const { data: deployedBuoy, error: createError } = await supabaseAdmin
         .from('deployed_buoys')
         .insert({
@@ -616,7 +618,8 @@ export async function deployBuoy(data: {
             buoy_config_id: buoyConfigId,
             metadata: componentMetadata,
             next_service_due: nextServiceDate.toISOString().split('T')[0],
-            light_character: data.light_character
+            light_character: data.light_character,
+            zone: activeZone
         })
         .select()
         .single();
@@ -633,7 +636,8 @@ export async function deployBuoy(data: {
             .update({
                 status: 'deployed',
                 location: `Boei ${data.name}`,
-                deployment_id: deployedBuoy.id
+                deployment_id: deployedBuoy.id,
+                zone: activeZone
             })
             .in('id', assetIds);
 
