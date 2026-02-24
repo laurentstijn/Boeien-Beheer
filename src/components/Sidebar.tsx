@@ -70,7 +70,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
             title: "Rapporten (Admin)",
             adminOnly: true,
             items: [
-                { name: "Te Ziene Boeien", href: "/rapporten", icon: FileText, count: null },
+                { name: "Google planning", href: "/rapporten", icon: FileText, count: null },
                 { name: "Dagelijks Rapport", href: "/dagelijks-rapport", icon: ClipboardList, count: null },
             ]
         },
