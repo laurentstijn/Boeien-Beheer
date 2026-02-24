@@ -42,24 +42,13 @@ const SECTION_COLORS = [
     { name: 'Teal', value: '#008272' },
 ];
 
-export default function NotitiesClient() {
-    const { session } = useSupabase();
-    const isAdmin = session?.user?.user_metadata?.role === 'admin';
-    const userZone = session?.user?.user_metadata?.zone || 'zone_zeeschelde'; // default
-    const [zone, setZone] = useState<string>(userZone);
+export default function NotitiesClient({ activeZone }: { activeZone: string | null }) {
+    const { session } = useSupabase(); // Keep for future use or if needed internally
+    const [zone, setZone] = useState<string>(activeZone || 'zone_zeeschelde');
 
     useEffect(() => {
-        if (isAdmin) {
-            const cookies = document.cookie.split('; ');
-            const overrideCookie = cookies.find(row => row.startsWith('admin_zone_override='));
-            if (overrideCookie) {
-                const overrideValue = overrideCookie.split('=')[1];
-                if (overrideValue !== 'all') {
-                    setZone(overrideValue);
-                }
-            }
-        }
-    }, [isAdmin, userZone]);
+        setZone(activeZone || 'zone_zeeschelde');
+    }, [activeZone]);
 
     const storagePrefix = zone ? `_${zone}` : '';
     const SECTIONS_KEY = `note_sections${storagePrefix}`;
@@ -90,7 +79,12 @@ export default function NotitiesClient() {
             setSections(parsedSections);
             setPages(parsedPages);
             if (parsedSections.length > 0) {
-                setSelectedSectionId(parsedSections[0].id);
+                const firstSectionId = parsedSections[0].id;
+                setSelectedSectionId(firstSectionId);
+                const firstPages = parsedPages.filter((p: NotePage) => p.section_id === firstSectionId);
+                if (firstPages.length > 0) {
+                    setSelectedPageId(firstPages[0].id);
+                }
             }
         } else {
             // Default Demo Content
