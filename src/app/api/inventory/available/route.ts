@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 /**
  * GET /api/inventory/available?category=Lamp
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { data: assets, error } = await supabase
+        const { data: assets, error } = await supabaseAdmin
             .from('assets')
             .select(`
                 id,

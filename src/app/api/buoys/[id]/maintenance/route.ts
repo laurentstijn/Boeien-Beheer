@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function GET(
     request: Request,
@@ -19,7 +19,7 @@ export async function GET(
             return NextResponse.json({ data: [], count: 0 });
         }
 
-        const { data, count, error } = await supabase
+        const { data, count, error } = await supabaseAdmin
             .from('maintenance_logs')
             .select('*', { count: 'exact' })
             .eq('deployed_buoy_id', id)

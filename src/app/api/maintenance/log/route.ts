@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { recalculateBuoyMaintenance } from '@/lib/maintenance';
 
 export async function POST(req: Request) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
         if (isFuture) {
             // Check daily limit (max 2)
-            const { count, error: countError } = await supabase
+            const { count, error: countError } = await supabaseAdmin
                 .from('planning_entries')
                 .select('*', { count: 'exact', head: true })
                 .eq('planned_date', date);
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
                 }, { status: 400 });
             }
 
-            const { data, error: planningError } = await supabase
+            const { data, error: planningError } = await supabaseAdmin
                 .from('planning_entries')
                 .insert([{
                     buoy_id: buoyId,
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
             if (!itemId) return;
 
             // 1. Find an available asset of this item type
-            const { data: availableAssets, error: assetError } = await supabase
+            const { data: availableAssets, error: assetError } = await supabaseAdmin
                 .from('assets')
                 .select('id, items(name, specs)')
                 .eq('item_id', itemId)
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
                 replacementNames[typeKey] = newItem.name;
 
                 // 2. Find the OLD asset currently linked to the buoy
-                const { data: buoy } = await supabase
+                const { data: buoy } = await supabaseAdmin
                     .from('deployed_buoys')
                     .select('metadata')
                     .eq('id', buoyId)
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
 
                 if (oldAssetId) {
                     // Update OLD asset
-                    await supabase.from('assets').update({
+                    await supabaseAdmin.from('assets').update({
                         status: isLost ? 'lost' : 'maintenance',
                         location: isLost ? 'Verloren' : 'Magazijn (Onderhoud)',
                         deployment_id: null
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
                 }
 
                 // 3. Deploy NEW asset
-                await supabase.from('assets').update({
+                await supabaseAdmin.from('assets').update({
                     status: 'deployed',
                     location: `Op zee (${buoyId})`,
                     deployment_id: buoyId
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
             return null;
         };
 
-        const { data: buoyData } = await supabase.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
+        const { data: buoyData } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
         const newMetadata = { ...(buoyData?.metadata || {}) };
 
         if (replacements.chain) {
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
 
         if (body.id) {
             // Update existing log
-            const { error: logError } = await supabase
+            const { error: logError } = await supabaseAdmin
                 .from('maintenance_logs')
                 .update({
                     technician,
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
             }
         } else {
             // Create new log
-            const { error: logError } = await supabase
+            const { error: logError } = await supabaseAdmin
                 .from('maintenance_logs')
                 .insert({
                     deployed_buoy_id: buoyId,
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
 
         // 2. Clean up planning entries (if any exist for this buoy)
         // Since we are now registering actual maintenance, the planning is no longer needed
-        await supabase
+        await supabaseAdmin
             .from('planning_entries')
             .delete()
             .eq('buoy_id', buoyId);

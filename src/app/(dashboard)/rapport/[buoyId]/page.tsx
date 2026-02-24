@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { notFound } from 'next/navigation';
 import PrintButton from '../PrintButton';
 
@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 async function getBuoyReport(buoyId: string) {
     console.log('Fetching report for buoyId:', buoyId);
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
         .from('deployed_buoys')
         .select(`*, buoy_configurations (name)`)
         .eq('id', buoyId)
