@@ -290,6 +290,7 @@ export async function deployBuoyAction(prevState: any, formData: FormData) {
     const lat = parseFloat(formData.get('lat') as string);
     const lng = parseFloat(formData.get('lng') as string);
     const notes = formData.get('notes') as string;
+    console.log(">>> [deployBuoyAction] RECEIVED NOTES:", notes);
 
     const buoy_id = formData.get('buoy_id') as string;
 
@@ -1126,6 +1127,8 @@ export async function uploadManualAction(formData: FormData, prefix: string = ''
             });
 
         if (uploadError) throw uploadError;
+
+        revalidatePath('/notities');
         return { success: true };
     } catch (error: any) {
         console.error('Manual upload error:', error);
@@ -1138,6 +1141,8 @@ export async function deleteManualAction(filename: string, prefix: string = '') 
         const path = prefix ? `${prefix}${filename}` : filename;
         const { error } = await supabaseAdmin.storage.from('manuals').remove([path]);
         if (error) throw error;
+
+        revalidatePath('/notities');
         return { success: true };
     } catch (error: any) {
         console.error('Manual delete error:', error);
