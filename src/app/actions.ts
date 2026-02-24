@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { deployBuoy, retrieveBuoyWithDispositions } from '@/lib/db';
+import { deployBuoy, retrieveBuoyWithDispositions, getZoneFilter } from '@/lib/db';
 import { recalculateBuoyMaintenance } from '@/lib/maintenance';
 
 export async function setAdminZoneOverride(zone: string | null) {
@@ -90,10 +90,12 @@ export async function createAsset(prevState: any, formData: FormData) {
     }
 
     try {
+        const activeZone = await getZoneFilter();
         const { error } = await supabaseAdmin.from('assets').insert({
             item_id: itemId,
             status: status || 'in_stock',
             location: location,
+            zone: activeZone, // Ensure it's not invisible to normal users
             metadata: {
                 notes,
                 article_number,
@@ -408,10 +410,12 @@ export async function incrementStock(category: string, itemName: string) {
 }
 
 async function createStockAsset(itemId: string, category: string) {
+    const activeZone = await getZoneFilter();
     const { error: insertError } = await supabaseAdmin.from('assets').insert({
         item_id: itemId,
         status: 'in_stock',
         location: 'Magazijn',
+        zone: activeZone,
         metadata: {
             // minimal metadata, we rely on item_id linkage
             created_via: 'stock_increment'
@@ -458,19 +462,29 @@ export async function decrementStock(category: string, itemName: string) {
 }
 
 async function deleteStockAsset(itemId: string) {
-    // Find ANY asset of this type in stock
-    const { data: assetToDelete, error: findError } = await supabaseAdmin.from('assets')
+    const activeZone = await getZoneFilter();
+    // Find ANY asset of this type in stock in the current zone
+    let query = supabaseAdmin.from('assets')
         .select('id')
         .eq('item_id', itemId)
-        .eq('status', 'in_stock')
-        .limit(1)
-        .single();
+        .eq('status', 'in_stock');
+
+    if (activeZone) {
+        query = query.eq('zone', activeZone);
+    }
+
+    const { data: assetToDelete, error: findError } = await query.limit(1).single();
 
     if (findError || !assetToDelete) {
         return { message: 'Geen vrije voorraad gevonden om te verwijderen.', success: false };
     }
 
     // Delete it
+    const { error } = await supabaseAdmin.from('assets').delete().eq('id', assetToDelete.id);
+    if (error) {
+        return { message: 'Fout bij verwijderen van voorraad.', success: false };
+    }
+
     revalidatePath('/kettingen');
     revalidatePath('/stenen');
     return { message: 'Voorraad bijgewerkt.', success: true };

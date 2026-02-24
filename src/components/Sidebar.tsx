@@ -110,18 +110,23 @@ export function Sidebar({ counts = {} }: SidebarProps) {
 
             <nav className="flex-1 overflow-y-auto px-4 space-y-4 pb-4 custom-scrollbar">
                 {navGroups.filter(g => !g.adminOnly || isAdmin).map((group, groupIdx) => {
-                    const isCollapsed = group.title !== null && openGroupTitle !== group.title;
+                    const isCollapsed = isAdmin && group.title !== null && openGroupTitle !== group.title;
                     return (
                         <div key={groupIdx} className="space-y-1">
                             {group.title && (
                                 <button
-                                    onClick={() => toggleGroup(group.title)}
-                                    className="w-full flex items-center justify-between text-[10px] uppercase font-bold text-app-text-secondary tracking-wider pl-1 pr-2 mb-1 hover:text-app-text-primary transition-colors focus:outline-none"
+                                    onClick={() => isAdmin && toggleGroup(group.title)}
+                                    className={clsx(
+                                        "w-full flex items-center justify-between text-[10px] uppercase font-bold text-app-text-secondary tracking-wider pl-1 pr-2 mb-1 transition-colors",
+                                        isAdmin ? "hover:text-app-text-primary focus:outline-none cursor-pointer" : "cursor-default"
+                                    )}
                                 >
                                     <span>{group.title}</span>
-                                    <div className="text-app-text-secondary/50">
-                                        {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                    </div>
+                                    {isAdmin && (
+                                        <div className="text-app-text-secondary/50">
+                                            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        </div>
+                                    )}
                                 </button>
                             )}
                             <div className={clsx(

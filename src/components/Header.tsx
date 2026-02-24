@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Sun, Moon, Loader2, Check, LogOut, Shield, Ship, Eye } from "lucide-react";
+import { Calendar, Sun, Moon, Loader2, Check, LogOut, Shield, Ship, Eye, KeyRound, X } from "lucide-react";
 import { useState, useEffect, useTransition, useRef } from "react";
 import { updateStockCountDate, setAdminZoneOverride } from "@/app/actions";
 import { useSupabase } from "@/components/SupabaseProvider";
@@ -38,6 +38,48 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
     const router = useRouter();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isSwitchingZone, startZoneTransition] = useTransition();
+
+    // Password change state
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState("");
+    const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordError("");
+        setPasswordSuccess(false);
+
+        if (newPassword.length < 6) {
+            setPasswordError("Wachtwoord moet minimaal 6 tekens zijn.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError("Wachtwoorden komen niet overeen.");
+            return;
+        }
+
+        setIsChangingPassword(true);
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+
+        setIsChangingPassword(false);
+
+        if (error) {
+            setPasswordError(error.message);
+        } else {
+            setPasswordSuccess(true);
+            setNewPassword("");
+            setConfirmPassword("");
+            setTimeout(() => {
+                setShowPasswordModal(false);
+                setPasswordSuccess(false);
+            }, 3000);
+        }
+    };
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -183,9 +225,17 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
                         )}
 
                         <button
+                            onClick={() => setShowPasswordModal(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 text-app-text-secondary hover:text-blue-500 transition-colors"
+                            title="Wachtwoord wijzigen"
+                        >
+                            <KeyRound className="w-4 h-4" />
+                            <span className="text-xs font-semibold hidden md:inline">Wachtwoord</span>
+                        </button>
+                        <button
                             onClick={handleLogout}
                             disabled={isLoggingOut}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-500/10 text-app-text-secondary hover:text-red-500 transition-colors ml-2"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-500/10 text-app-text-secondary hover:text-red-500 transition-colors ml-1"
                         >
                             {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
                             <span className="text-xs font-semibold">Uitloggen</span>
@@ -226,6 +276,74 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
                     </div>
                 </div>
             </div>
+
+            {/* Password Change Modal */}
+            {showPasswordModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+                    <div className="bg-app-bg border border-app-border rounded-2xl p-6 shadow-2xl max-w-sm w-full relative">
+                        <button
+                            onClick={() => setShowPasswordModal(false)}
+                            className="absolute top-4 right-4 p-1 rounded-full hover:bg-app-surface-hover text-app-text-secondary"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <h2 className="text-xl font-bold text-app-text-primary mb-2 flex items-center gap-2">
+                            <KeyRound className="w-5 h-5 text-blue-500" />
+                            Wachtwoord Wijzigen
+                        </h2>
+                        <p className="text-xs text-app-text-secondary mb-6 leading-relaxed">
+                            Kies een nieuw persoonlijk wachtwoord. Je wordt hierna niet uitgelogd.
+                        </p>
+
+                        <form onSubmit={handlePasswordChange} className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-widest mb-1.5">Nieuw Wachtwoord</label>
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full bg-app-surface border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                                    placeholder="Minimaal 6 tekens"
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-widest mb-1.5">Bevestig Wachtwoord</label>
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="w-full bg-app-surface border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                                    placeholder="Typ nogmaals"
+                                    required
+                                />
+                            </div>
+
+                            {passwordError && (
+                                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs rounded-lg">
+                                    {passwordError}
+                                </div>
+                            )}
+
+                            {passwordSuccess && (
+                                <div className="p-3 bg-green-500/10 border border-green-500/20 text-green-500 text-xs rounded-lg font-bold flex items-center gap-2">
+                                    <Check className="w-4 h-4" /> Wachtwoord succesvol gewijzigd!
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={isChangingPassword || passwordSuccess}
+                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-sm transition-all"
+                            >
+                                {isChangingPassword ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Wijziging Opslaan"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </header>
     );
 }
