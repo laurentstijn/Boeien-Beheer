@@ -346,7 +346,13 @@ export async function getItemTypes(category: string) {
         .eq('category', category)
         .order('name');
 
-    return data || [];
+    const zoneFilter = await getZoneFilter();
+    if (!zoneFilter || !data) return data || [];
+
+    return data.filter((item: any) => {
+        const itemZone = item.specs?.zone;
+        return !itemZone || itemZone === zoneFilter;
+    });
 }
 
 export async function getInventoryCounts() {

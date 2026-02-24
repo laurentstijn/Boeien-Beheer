@@ -58,8 +58,9 @@ export async function createAsset(prevState: any, formData: FormData) {
                 const thickness = formData.get('thickness') as string;
                 const weight = formData.get('weight') as string;
                 const shape = formData.get('shape') as string;
+                const activeZone = await getZoneFilter();
 
-                const specs: any = {};
+                const specs: any = { zone: activeZone };
                 if (length) specs.length = length;
                 if (thickness) specs.thickness = thickness;
                 if (weight) specs.weight = weight;
