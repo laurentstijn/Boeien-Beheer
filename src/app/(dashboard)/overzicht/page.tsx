@@ -39,11 +39,36 @@ export default async function OverzichtPage() {
   const availableShackles = shackleAssets.filter((a: any) => a.status === 'in_stock');
   const availableZinc = zincAssets.filter((a: any) => a.status === 'in_stock');
 
-  // Group buoys by color
-  const buoyColorCounts: Record<string, number> = {};
+  // Helper to determine buoy color
+  const getBuoyDisplayColor = (b: any) => {
+    if (!b) return 'Yellow';
+    if (b.metadata?.color && b.metadata.color !== 'Onbekend') return b.metadata.color;
+
+    const searchString = `${b.name} ${b.details || ''}`.toUpperCase();
+    if (searchString.includes('BLAUW/GEEL')) return 'Blauw/Geel';
+    if (searchString.includes('ZWART/GEEL')) return 'Zwart/Geel';
+    if (searchString.includes('ROOD')) return 'Rood';
+    if (searchString.includes('GROEN')) return 'Groen';
+    if (searchString.includes('ZWART')) return 'Zwart';
+    if (searchString.includes('BLAUW')) return 'Blauw';
+    if (searchString.includes('NOORD')) return 'Noord';
+    if (searchString.includes('ZUID')) return 'Zuid';
+    if (searchString.includes('OOST')) return 'Oost';
+    if (searchString.includes('WEST')) return 'West';
+
+    return 'Yellow';
+  };
+
+  // Group buoys by display identity (combination of type and color)
+  const buoyCounts: Record<string, { color: string; type: string; count: number }> = {};
   availableBuoys.forEach((asset: any) => {
-    const color = asset.metadata?.color || 'Onbekend';
-    buoyColorCounts[color] = (buoyColorCounts[color] || 0) + 1;
+    const color = getBuoyDisplayColor(asset);
+    const type = asset.name || asset.metadata?.boei_soort || asset.metadata?.soort || 'Standaard';
+    const key = `${color}-${type}`;
+    if (!buoyCounts[key]) {
+      buoyCounts[key] = { color, type, count: 0 };
+    }
+    buoyCounts[key].count++;
   });
 
   // Calculate assembly potential per color
@@ -130,23 +155,36 @@ export default async function OverzichtPage() {
             <h2 className="font-bold text-app-text-primary">Boeien</h2>
           </div>
           <div className="space-y-2">
-            {Object.entries(buoyColorCounts).sort(([, a], [, b]) => b - a).map(([color, count]) => (
-              <div key={color} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between bg-app-bg/50 rounded-xl px-3 py-2 border border-app-border/10">
-                  <div className="flex items-center gap-2">
-                    <BuoyIcon color={color} size="sm" />
-                    <span className="text-sm font-medium text-app-text-secondary">{color}</span>
+            {Object.entries(buoyCounts).sort(([, a], [, b]) => b.count - a.count).map(([key, item]) => {
+              // Determine display name for UI
+              let displayName = item.type;
+
+              // Assembly potential logic depends on the color primarily for chains/stones
+              const potential = colorAssemblyPotential[item.color] || 0;
+
+              return (
+                <div key={key} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between bg-app-bg/50 rounded-xl px-3 py-2 border border-app-border/10">
+                    <div className="flex items-center gap-3">
+                      <BuoyIcon color={item.color} type={item.type} size="sm" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-app-text-primary capitalize leading-tight">{displayName}</span>
+                        {item.color !== 'Yellow' && item.color !== displayName && (
+                          <span className="text-[10px] text-app-text-secondary uppercase tracking-widest leading-none mt-0.5">{item.color}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-bold text-app-text-primary text-xl ml-4">{item.count}</span>
                   </div>
-                  <span className="font-bold text-app-text-primary">{count}</span>
+                  {potential > 0 && (
+                    <div className="mx-3 flex items-center gap-1.5 text-[10px] font-bold text-green-500 uppercase tracking-wider mt-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {potential} mogelijk samen te stellen
+                    </div>
+                  )}
                 </div>
-                {colorAssemblyPotential[color] > 0 && (
-                  <div className="mx-3 flex items-center gap-1.5 text-[10px] font-bold text-green-500 uppercase tracking-wider">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {colorAssemblyPotential[color]} mogelijk samen te stellen
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {availableBuoys.length === 0 && (
               <div className="text-xs text-app-text-secondary italic px-3">Geen boeien beschikbaar</div>
             )}

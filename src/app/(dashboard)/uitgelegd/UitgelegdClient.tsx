@@ -22,12 +22,13 @@ interface UitgelegdClientProps {
     availableLamps: any[];
     availableChains?: any[];
     availableStones?: any[];
+    activeZone?: string | null;
 }
 
 type SortField = 'name' | 'type' | 'maintenance' | 'status' | 'extern';
 type SortOrder = 'asc' | 'desc';
 
-export default function UitgelegdClient({ initialBuoys, buoyConfigurations, availableLamps, availableChains = [], availableStones = [] }: UitgelegdClientProps) {
+export default function UitgelegdClient({ initialBuoys, buoyConfigurations, availableLamps, availableChains = [], availableStones = [], activeZone = null }: UitgelegdClientProps) {
     const [buoys, setBuoys] = useState<DeployedBuoy[]>(initialBuoys);
     const [selectedBuoyId, setSelectedBuoyId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -221,6 +222,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                 buoys={filteredAndSortedBuoys}
                                 selectedBuoyId={selectedBuoyId}
                                 onSelect={handleSelectBuoy}
+                                activeZone={activeZone}
                             />
                         </div>
                     </div>
@@ -502,7 +504,14 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                     <tr className="bg-app-bg/50 border-l-4 border-l-blue-500">
                                                         <td colSpan={7} className="px-6 py-6 font-geist">
                                                             <div className="flex flex-col gap-6">
-
+                                                                {buoy.notes && (
+                                                                    <div className="bg-white rounded-xl p-4 border border-app-border">
+                                                                        <h4 className="text-xs font-bold uppercase tracking-wider text-app-text-secondary mb-2 flex items-center gap-2">
+                                                                            <Pencil className="w-3 h-3" /> Notities
+                                                                        </h4>
+                                                                        <p className="text-sm text-app-text-primary whitespace-pre-wrap">{buoy.notes}</p>
+                                                                    </div>
+                                                                )}
                                                                 <MaintenanceHistoryDetails buoy={buoy} onUpdate={handleUpdateBuoy} />
                                                             </div>
                                                         </td>

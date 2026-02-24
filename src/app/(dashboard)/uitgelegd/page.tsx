@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
-import { getDeployedBuoys, getBuoyConfigurations, getAssets } from "@/lib/db";
+import { getDeployedBuoys, getBuoyConfigurations, getAssets, getZoneFilter } from "@/lib/db";
 import UitgelegdClient from "./UitgelegdClient";
 export default async function UitgelegdPage() {
+    const activeZone = await getZoneFilter();
     const deployedBuoys = await getDeployedBuoys();
     const buoyConfigurations = await getBuoyConfigurations();
 
@@ -23,5 +24,6 @@ export default async function UitgelegdPage() {
         availableLamps={availableLamps}
         availableChains={availableChains}
         availableStones={availableStones}
+        activeZone={activeZone}
     />;
 }
