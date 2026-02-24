@@ -21,7 +21,8 @@ import {
     Download,
     ChevronDown,
     ChevronRight,
-    ClipboardList
+    ClipboardList,
+    Users
 } from "lucide-react";
 import clsx from "clsx";
 import { useSupabase } from "@/components/SupabaseProvider";
@@ -70,6 +71,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
             title: "Rapporten (Admin)",
             adminOnly: true,
             items: [
+                { name: "Gebruikers", href: "/gebruikers", icon: Users, count: null },
                 { name: "Google planning", href: "/rapporten", icon: FileText, count: null },
                 { name: "Dagelijks Rapport", href: "/dagelijks-rapport", icon: ClipboardList, count: null },
             ]
