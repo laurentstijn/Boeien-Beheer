@@ -42,6 +42,40 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const [retrievingBuoy, setRetrievingBuoy] = useState<DeployedBuoy | null>(null);
     const [tideAdviceMap, setTideAdviceMap] = useState<Record<string, any>>({});
 
+    const getBuoyDisplayColor = (b: any) => {
+        if (!b) return 'Yellow';
+        // Priority 1: Buoy Configuration Color
+        if (b.buoyType?.color && b.buoyType.color.toLowerCase() !== 'onbekend') {
+            const c = b.buoyType.color;
+            if (c.toLowerCase().includes('blauw') && c.toLowerCase().includes('geel')) return 'Blauw/Geel';
+            if (c.toLowerCase().includes('zwart') && c.toLowerCase().includes('geel')) return 'Zwart/Geel';
+            return c.charAt(0).toUpperCase() + c.slice(1);
+        }
+
+        // Priority 2: Metadata Color
+        if (b.metadata?.color && b.metadata.color !== 'Onbekend') {
+            const c = b.metadata.color;
+            if (c.toLowerCase().includes('blauw') && c.toLowerCase().includes('geel')) return 'Blauw/Geel';
+            if (c.toLowerCase().includes('zwart') && c.toLowerCase().includes('geel')) return 'Zwart/Geel';
+            return c.charAt(0).toUpperCase() + c.slice(1);
+        }
+
+        // Priority 3: Fallback parsing Name/Details
+        const searchString = `${b.name} ${b.details || ''} ${b.metadata?.model || ''}`.toUpperCase();
+        if (searchString.includes('BLAUW/GEEL')) return 'Blauw/Geel';
+        if (searchString.includes('ZWART/GEEL')) return 'Zwart/Geel';
+        if (searchString.includes('ROOD')) return 'Rood';
+        if (searchString.includes('GROEN')) return 'Groen';
+        if (searchString.includes('ZWART')) return 'Zwart';
+        if (searchString.includes('BLAUW')) return 'Blauw';
+        if (searchString.includes('NOORD')) return 'Noord';
+        if (searchString.includes('ZUID')) return 'Zuid';
+        if (searchString.includes('OOST')) return 'Oost';
+        if (searchString.includes('WEST')) return 'West';
+
+        return 'Yellow';
+    };
+
     // Smart Suggestion: Top 2 oldest overdue buoys that are not already planned, not hidden, and not in 'Aandacht' status
     const todayPlannedBuoys = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
@@ -315,7 +349,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
                                                             <BuoyIcon
-                                                                color={buoy.buoyType?.color || buoy.metadata?.color || "geel"}
+                                                                color={getBuoyDisplayColor(buoy)}
                                                                 type={buoy.buoyType?.name !== 'Onbekend' ? buoy.buoyType?.name : buoy.metadata?.boei_soort}
                                                                 size="sm"
                                                                 className="shrink-0"
