@@ -2,7 +2,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { cookies } from 'next/headers';
 import { deployBuoy, retrieveBuoyWithDispositions, getZoneFilter } from '@/lib/db';
 import { recalculateBuoyMaintenance } from '@/lib/maintenance';
@@ -1091,6 +1091,7 @@ export async function updateStockCountDate(date: string) {
 // -----------------------------------------------------
 
 export async function listManualsAction(prefix: string = '') {
+    noStore();
     try {
         const { data, error } = await supabaseAdmin.storage.from('manuals').list(prefix, {
             limit: 100,
