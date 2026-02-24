@@ -101,7 +101,9 @@ export function Sidebar({ counts = {} }: SidebarProps) {
                     </div>
                     <div>
                         Boei Beheer
-                        <div className="text-xs text-app-text-secondary font-normal italic">Boeien Zeeschelde</div>
+                        <div className="text-xs text-app-text-secondary font-normal italic">
+                            Welkom {isAdmin ? 'Admin' : (session?.user?.user_metadata?.zone === 'zone_zeetijger' ? 'Zeetijger' : 'Zeeschelde')}
+                        </div>
                     </div>
                 </h1>
             </div>

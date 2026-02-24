@@ -145,12 +145,8 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
 
                 {session && (
                     <div className="flex items-center gap-3 mr-4 border-r border-app-border pr-6">
-                        {isAdmin ? (
+                        {isAdmin && (
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400">
-                                    <Shield className="w-4 h-4" />
-                                    <span className="font-bold text-sm tracking-wide">Hoofdbeheerder</span>
-                                </div>
                                 <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
                                     <button
                                         disabled={isSwitchingZone}
@@ -183,16 +179,6 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
                                         Zeetijger
                                     </button>
                                 </div>
-                            </div>
-                        ) : zone === 'zone_zeetijger' ? (
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
-                                <Ship className="w-4 h-4" />
-                                <span className="font-bold text-xs">Schip Zeetijger</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
-                                <Ship className="w-4 h-4" />
-                                <span className="font-bold text-xs">Schip Zeeschelde</span>
                             </div>
                         )}
 
