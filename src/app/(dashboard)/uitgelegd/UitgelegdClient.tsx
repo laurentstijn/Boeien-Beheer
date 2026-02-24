@@ -350,7 +350,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                         <div className="flex items-center gap-3">
                                                             <BuoyIcon
                                                                 color={getBuoyDisplayColor(buoy)}
-                                                                type={buoy.buoyType?.name !== 'Onbekend' ? buoy.buoyType?.name : buoy.metadata?.boei_soort}
+                                                                type={`${buoy.buoyType?.name || ''} ${buoy.metadata?.boei_soort || ''} ${buoy.metadata?.model || ''} ${buoy.name}`}
                                                                 size="sm"
                                                                 className="shrink-0"
                                                             />
@@ -362,7 +362,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                     </td>
                                                     <td className="px-6 py-4 font-medium">
                                                         <div className="flex flex-col gap-1">
-                                                            <span>{buoy.buoyType?.name !== "Onbekend" ? buoy.buoyType?.name : (buoy.metadata?.model || buoy.metadata?.boei_soort || "Onbekend")}</span>
+                                                            <span>{(buoy.buoyType?.name && buoy.buoyType.name !== "Onbekend") ? buoy.buoyType.name : (buoy.metadata?.model || buoy.metadata?.boei_soort || "Onbekend")}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4">
@@ -538,14 +538,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                     <tr className="bg-app-bg/50 border-l-4 border-l-blue-500">
                                                         <td colSpan={7} className="px-6 py-6 font-geist">
                                                             <div className="flex flex-col gap-6">
-                                                                {buoy.notes && (
-                                                                    <div className="bg-white rounded-xl p-4 border border-app-border">
-                                                                        <h4 className="text-xs font-bold uppercase tracking-wider text-app-text-secondary mb-2 flex items-center gap-2">
-                                                                            <Pencil className="w-3 h-3" /> Notities
-                                                                        </h4>
-                                                                        <p className="text-sm text-app-text-primary whitespace-pre-wrap">{buoy.notes}</p>
-                                                                    </div>
-                                                                )}
                                                                 <MaintenanceHistoryDetails buoy={buoy} onUpdate={handleUpdateBuoy} />
                                                             </div>
                                                         </td>
