@@ -16,18 +16,20 @@ interface ManualFile {
     };
 }
 
-export function ManualsLibrary() {
+export function ManualsLibrary({ zone = '' }: { zone?: string }) {
     const [files, setFiles] = useState<ManualFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const prefix = zone ? `${zone}/` : '';
+
     const loadFiles = async () => {
         setLoading(true);
         setError(null);
         try {
-            const result = await listManualsAction();
+            const result = await listManualsAction(prefix);
             if (!result.success) {
                 throw new Error(result.message);
             }
@@ -77,7 +79,7 @@ export function ManualsLibrary() {
             const formData = new FormData();
             formData.append('file', file);
 
-            const result = await uploadManualAction(formData);
+            const result = await uploadManualAction(formData, prefix);
 
             if (!result.success) throw new Error(result.message);
 
@@ -97,7 +99,7 @@ export function ManualsLibrary() {
 
         setLoading(true);
         try {
-            const result = await deleteManualAction(filename);
+            const result = await deleteManualAction(filename, prefix);
             if (!result.success) throw new Error(result.message);
 
             setFiles(files.filter(f => f.name !== filename));
@@ -110,7 +112,8 @@ export function ManualsLibrary() {
     };
 
     const getFileUrl = (filename: string) => {
-        const { data } = supabase.storage.from('manuals').getPublicUrl(filename);
+        const path = prefix ? `${prefix}${filename}` : filename;
+        const { data } = supabase.storage.from('manuals').getPublicUrl(path);
         return data.publicUrl;
     };
 
@@ -132,7 +135,7 @@ export function ManualsLibrary() {
                             Bibliotheek
                         </h1>
                         <p className="text-sm text-app-text-secondary mt-2">
-                            Centrale opslag voor alle handleidingen (PDF). Deze bibliotheek is gedeeld voor alle gebruikers.
+                            Centrale opslag voor alle handleidingen (PDF). {zone ? `Deze bestanden zijn alleen zichtbaar voor ${zone.replace('zone_', '')}.` : 'Deze bibliotheek is gedeeld voor alle gebruikers.'}
                         </p>
                     </div>
 

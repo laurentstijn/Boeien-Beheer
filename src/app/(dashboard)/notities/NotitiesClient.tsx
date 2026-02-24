@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { ManualsLibrary } from "@/components/ManualsLibrary";
+import { useSupabase } from "@/components/SupabaseProvider";
 
 interface NoteSection {
     id: string;
@@ -42,6 +43,28 @@ const SECTION_COLORS = [
 ];
 
 export default function NotitiesClient() {
+    const { session } = useSupabase();
+    const isAdmin = session?.user?.user_metadata?.role === 'admin';
+    const userZone = session?.user?.user_metadata?.zone || 'zone_zeeschelde'; // default
+    const [zone, setZone] = useState<string>(userZone);
+
+    useEffect(() => {
+        if (isAdmin) {
+            const cookies = document.cookie.split('; ');
+            const overrideCookie = cookies.find(row => row.startsWith('admin_zone_override='));
+            if (overrideCookie) {
+                const overrideValue = overrideCookie.split('=')[1];
+                if (overrideValue !== 'all') {
+                    setZone(overrideValue);
+                }
+            }
+        }
+    }, [isAdmin, userZone]);
+
+    const storagePrefix = zone ? `_${zone}` : '';
+    const SECTIONS_KEY = `note_sections${storagePrefix}`;
+    const PAGES_KEY = `note_pages${storagePrefix}`;
+
     const [sections, setSections] = useState<NoteSection[]>([]);
     const [pages, setPages] = useState<NotePage[]>([]);
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -58,8 +81,8 @@ export default function NotitiesClient() {
 
     // Initial Load (Sync with LocalStorage for now since DB table might be missing)
     useEffect(() => {
-        const savedSections = localStorage.getItem('note_sections');
-        const savedPages = localStorage.getItem('note_pages');
+        const savedSections = localStorage.getItem(SECTIONS_KEY);
+        const savedPages = localStorage.getItem(PAGES_KEY);
 
         if (savedSections && savedPages) {
             const parsedSections = JSON.parse(savedSections);
@@ -85,15 +108,15 @@ export default function NotitiesClient() {
             setSelectedSectionId('1');
             setSelectedPageId('p1');
         }
-    }, []);
+    }, [SECTIONS_KEY, PAGES_KEY]);
 
     // Save to LocalStorage whenever state changes
     useEffect(() => {
         if (sections.length > 0) {
-            localStorage.setItem('note_sections', JSON.stringify(sections));
-            localStorage.setItem('note_pages', JSON.stringify(pages));
+            localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+            localStorage.setItem(PAGES_KEY, JSON.stringify(pages));
         }
-    }, [sections, pages]);
+    }, [sections, pages, SECTIONS_KEY, PAGES_KEY]);
 
     const activeSection = useMemo(() =>
         sections.find(s => s.id === selectedSectionId),
@@ -370,7 +393,7 @@ export default function NotitiesClient() {
             {/* COLUMN 3: EDITOR OR MANUALS */}
             <div className="flex-1 bg-app-surface flex flex-col relative">
                 {selectedSectionId === 'manuals' ? (
-                    <ManualsLibrary />
+                    <ManualsLibrary zone={zone} />
                 ) : activePage ? (
                     <>
                         <div className="p-4 md:px-12 md:py-8 flex-1 flex flex-col overflow-y-auto custom-scrollbar">

@@ -1074,9 +1074,9 @@ export async function updateStockCountDate(date: string) {
 // MANUALS LIBRARY
 // -----------------------------------------------------
 
-export async function listManualsAction() {
+export async function listManualsAction(prefix: string = '') {
     try {
-        const { data, error } = await supabaseAdmin.storage.from('manuals').list('', {
+        const { data, error } = await supabaseAdmin.storage.from('manuals').list(prefix, {
             limit: 100,
             offset: 0,
             sortBy: { column: 'name', order: 'asc' },
@@ -1097,14 +1097,15 @@ export async function listManualsAction() {
     }
 }
 
-export async function uploadManualAction(formData: FormData) {
+export async function uploadManualAction(formData: FormData, prefix: string = '') {
     const file = formData.get('file') as File;
     if (!file) return { success: false, message: 'Geen bestand geselecteerd' };
 
     try {
+        const path = prefix ? `${prefix}${file.name}` : file.name;
         const { error: uploadError } = await supabaseAdmin.storage
             .from('manuals')
-            .upload(file.name, file, {
+            .upload(path, file, {
                 contentType: file.type,
                 upsert: true
             });
@@ -1117,9 +1118,10 @@ export async function uploadManualAction(formData: FormData) {
     }
 }
 
-export async function deleteManualAction(filename: string) {
+export async function deleteManualAction(filename: string, prefix: string = '') {
     try {
-        const { error } = await supabaseAdmin.storage.from('manuals').remove([filename]);
+        const path = prefix ? `${prefix}${filename}` : filename;
+        const { error } = await supabaseAdmin.storage.from('manuals').remove([path]);
         if (error) throw error;
         return { success: true };
     } catch (error: any) {
