@@ -70,10 +70,14 @@ export function BuoyIcon({ color, size = "md", variant = "full", shape, classNam
     // Handle cardinal marks (convert name to color combination)
     if (colors.length === 1) {
         const c = colors[0];
-        if (c.includes('noord')) colors = ['zwart', 'geel'];
-        else if (c.includes('zuid')) colors = ['geel', 'zwart'];
-        else if (c.includes('oost')) colors = ['zwart', 'geel', 'zwart'];
-        else if (c.includes('west')) colors = ['geel', 'zwart', 'geel'];
+        const tLower = (type || "").toLowerCase();
+        const isCardinalColor = c.includes('noord') || c.includes('zuid') || c.includes('oost') || c.includes('west');
+        const cardinalSource = isCardinalColor ? c : tLower;
+
+        if (cardinalSource.includes('noord')) colors = ['zwart', 'geel'];
+        else if (cardinalSource.includes('zuid')) colors = ['geel', 'zwart'];
+        else if (cardinalSource.includes('oost')) colors = ['zwart', 'geel', 'zwart'];
+        else if (cardinalSource.includes('west')) colors = ['geel', 'zwart', 'geel'];
     }
 
     // Deduce IALA shape if not explicitly provided
@@ -172,11 +176,12 @@ export function BuoyIcon({ color, size = "md", variant = "full", shape, classNam
 
     // Multi-color handling
     if (colors.length > 1) {
-        const isCardinal = safeColor.toLowerCase().includes('noord') ||
-            safeColor.toLowerCase().includes('zuid') ||
-            safeColor.toLowerCase().includes('oost') ||
-            safeColor.toLowerCase().includes('west') ||
-            safeColor.toLowerCase().includes('cardinaal');
+        const searchStr = `${safeColor} ${type || ""}`.toLowerCase();
+        const isCardinal = searchStr.includes('noord') ||
+            searchStr.includes('zuid') ||
+            searchStr.includes('oost') ||
+            searchStr.includes('west') ||
+            searchStr.includes('cardinaal');
 
         return (
             <div
