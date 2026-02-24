@@ -297,7 +297,7 @@ export default function UitleggenClient({
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
-        if (b.metadata?.color) return b.metadata.color;
+        if (b.metadata?.color && b.metadata.color !== 'Onbekend') return b.metadata.color;
 
         const searchString = `${b.name} ${b.details}`.toUpperCase();
         if (searchString.includes('BLAUW/GEEL')) return 'Blauw/Geel';
@@ -306,6 +306,11 @@ export default function UitleggenClient({
         if (searchString.includes('GROEN')) return 'Groen';
         if (searchString.includes('ZWART')) return 'Zwart';
         if (searchString.includes('BLAUW')) return 'Blauw';
+        if (searchString.includes('NOORD')) return 'Noord';
+        if (searchString.includes('ZUID')) return 'Zuid';
+        if (searchString.includes('OOST')) return 'Oost';
+        if (searchString.includes('WEST')) return 'West';
+
         return 'Yellow';
     };
 
@@ -455,7 +460,7 @@ export default function UitleggenClient({
                                         <div className="p-4 bg-white/5 rounded-2xl">
                                             <BuoyIcon
                                                 color={getBuoyDisplayColor(buoy)}
-                                                type={buoy.metadata?.boei_soort || buoy.metadata?.soort || 'standaard'}
+                                                type={buoy.name || buoy.metadata?.boei_soort || buoy.metadata?.soort || 'standaard'}
                                                 size="lg"
                                             />
                                         </div>
@@ -711,7 +716,7 @@ export default function UitleggenClient({
                                         <div className="flex items-center gap-3">
                                             <BuoyIcon
                                                 color={getBuoyDisplayColor(selectedBuoy)}
-                                                type={selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
+                                                type={selectedBuoy?.name || selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
                                                 size="sm"
                                             />
                                             <span className="text-app-text-secondary font-medium">Boei</span>
@@ -801,7 +806,7 @@ export default function UitleggenClient({
                                             <div className="w-10 h-10 rounded-xl bg-app-surface border border-app-border flex items-center justify-center">
                                                 <BuoyIcon
                                                     color={getBuoyDisplayColor(selectedBuoy)}
-                                                    type={selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
+                                                    type={selectedBuoy?.name || selectedBuoy?.metadata?.boei_soort || selectedBuoy?.metadata?.soort || 'standaard'}
                                                     size="md"
                                                 />
                                             </div>
