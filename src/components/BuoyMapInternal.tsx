@@ -40,7 +40,7 @@ function MapController({ selectedBuoyId, buoys }: { selectedBuoyId: string | nul
 }
 
 // Control to reset zoom
-function ResetZoomControl({ buoys }: { buoys: DeployedBuoy[] }) {
+function ResetZoomControl({ buoys, activeZone }: { buoys: DeployedBuoy[], activeZone?: string | null }) {
     const map = useMap();
 
     const handleReset = useCallback((e: React.MouseEvent) => {
@@ -49,9 +49,14 @@ function ResetZoomControl({ buoys }: { buoys: DeployedBuoy[] }) {
             const bounds = L.latLngBounds(buoys.map(b => [b.location.lat, b.location.lng]));
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
         } else {
-            map.setView([51.2194, 4.4025], 13);
+            // Ostend for Zeetijger, Antwerp for Zeeschelde
+            if (activeZone === 'zone_zeetijger') {
+                map.setView([51.23, 2.92], 13);
+            } else {
+                map.setView([51.2194, 4.4025], 13);
+            }
         }
-    }, [map, buoys]);
+    }, [map, buoys, activeZone]);
 
     return (
         <button
@@ -163,19 +168,22 @@ const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean
 export default function BuoyMapInternal({
     buoys,
     selectedBuoyId,
-    onSelect
+    onSelect,
+    activeZone
 }: {
     buoys: DeployedBuoy[],
     selectedBuoyId?: string | null,
-    onSelect?: (id: string | null) => void
+    onSelect?: (id: string | null) => void,
+    activeZone?: string | null
 }) {
 
 
     // Center is handled by MapController now, but initial center needed for MapContainer
     // We use the full list for initial center to avoid jumping around if list is empty
+    const defaultCenter: [number, number] = activeZone === 'zone_zeetijger' ? [51.23, 2.92] : [51.2194, 4.4025];
     const center: [number, number] = buoys.length > 0
         ? [buoys[0].location.lat, buoys[0].location.lng]
-        : [51.2194, 4.4025];
+        : defaultCenter;
 
     return (
         <div className="h-full w-full rounded-lg overflow-hidden relative z-0">
@@ -186,7 +194,7 @@ export default function BuoyMapInternal({
                 />
 
                 <MapController selectedBuoyId={selectedBuoyId || null} buoys={buoys} />
-                <ResetZoomControl buoys={buoys} />
+                <ResetZoomControl buoys={buoys} activeZone={activeZone} />
 
                 {buoys.map((buoy) => {
                     // Map markers flash if status is not OK, OR if the service date is strictly in the past (overtime)

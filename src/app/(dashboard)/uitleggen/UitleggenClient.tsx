@@ -25,6 +25,7 @@ interface UitleggenClientProps {
     availableTopmarks: any[];
     availableLights: any[];
     existingBuoys: DeployedBuoy[];
+    activeZone: string | null;
 }
 
 // Shared helper for technical asset labels
@@ -256,7 +257,8 @@ export default function UitleggenClient({
     availableStones,
     availableTopmarks,
     availableLights,
-    existingBuoys
+    existingBuoys,
+    activeZone
 }: UitleggenClientProps) {
     const router = useRouter();
     const [step, setStep] = useState(1);
@@ -371,8 +373,7 @@ export default function UitleggenClient({
             const result = await deployBuoyAction(null, submitData);
 
             if (result.success) {
-                router.push('/uitgelegd');
-                router.refresh();
+                window.location.href = '/uitgelegd';
             } else {
                 throw new Error(result.message);
             }
@@ -619,6 +620,7 @@ export default function UitleggenClient({
                             <BuoyMap
                                 buoys={allMapBuoys}
                                 selectedBuoyId={previewBuoy ? 'preview' : null}
+                                activeZone={activeZone}
                             />
                             {!previewBuoy && (
                                 <div className="absolute inset-0 bg-app-bg/60 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center text-app-text-secondary z-10 pointer-events-none">

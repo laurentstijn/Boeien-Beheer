@@ -131,7 +131,20 @@ export function StockManagement({ title, assets, category, itemTypes, showColor 
 
     const visibleRows = Array.from(rows.values()).filter(row => {
         const hasAssets = row.inStock > 0 || row.maintenance > 0 || row.deployed > 0;
+
+        // Let's refine the 'global' check. In `db.ts`, we made `createAsset` add `zone` to the `specs` JSONB object.
+        // So global items have NO `zone` in `row.itemType.specs.zone`.
+        // We only want to show global items IF they have assets.
+        // We also DO NOT want to show global items that have NO assets, even if they are standard.
+        // The previous check was: `return hasAssets || !isGlobal;` where `isGlobal = !row.itemType?.specs?.zone`
+        // Wait, if it's NOT global (meaning it HAS a zone), we show it (even if 0 assets).
+        // If it IS global (NO zone), we ONLY show it if it has assets.
+
         const isGlobal = !row.itemType?.specs?.zone;
+
+        // Correct logic:
+        // if it has assets => SHOW (true)
+        // if it has NO assets => ONLY SHOW if it is NOT global (meaning it belongs exactly to this zone)
         return hasAssets || !isGlobal;
     });
 
