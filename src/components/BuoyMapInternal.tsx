@@ -107,7 +107,9 @@ const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean
     const typeLower = (buoy.buoyType?.name || '').toLowerCase();
     const soort = ((buoy as any).metadata?.boei_soort || '').toLowerCase();
 
-    const isCardinal = soort.includes('cardinaal') || typeLower.includes('cardinaal');
+    const isCardinal = soort.includes('cardinaal') || typeLower.includes('cardinaal') ||
+        typeLower.includes('noord') || typeLower.includes('zuid') ||
+        typeLower.includes('oost') || typeLower.includes('west');
     const isStarboard = soort === 'spits' || (!isCardinal && (colorLower.includes('groen') || typeLower.includes('spits') || typeLower.includes('stuurboord')));
     const isPort = soort === 'plat' || (!isCardinal && (colorLower.includes('rood') || typeLower.includes('plat') || typeLower.includes('bakboord')));
     const isMixed = !isCardinal && (colorLower && (colorLower.includes('-') || colorLower.includes('/')));
@@ -117,10 +119,10 @@ const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean
 
     if (isCardinal) {
         const BLACK = '#111827', YELLOW = '#FACC15';
-        if (soort.includes('noord')) finalSvg = splitHorizSvg(BLACK, YELLOW);        // Noord: zwart boven, geel onder
-        else if (soort.includes('zuid')) finalSvg = splitHorizSvg(YELLOW, BLACK);    // Zuid: geel boven, zwart onder
-        else if (soort.includes('oost')) finalSvg = threeBandSvg(BLACK, YELLOW);     // Oost: zwart-geel-zwart
-        else if (soort.includes('west')) finalSvg = threeBandSvg(YELLOW, BLACK);     // West: geel-zwart-geel
+        if (soort.includes('noord') || typeLower.includes('noord')) finalSvg = splitHorizSvg(BLACK, YELLOW);        // Noord: zwart boven, geel onder
+        else if (soort.includes('zuid') || typeLower.includes('zuid')) finalSvg = splitHorizSvg(YELLOW, BLACK);    // Zuid: geel boven, zwart onder
+        else if (soort.includes('oost') || typeLower.includes('oost')) finalSvg = threeBandSvg(BLACK, YELLOW);     // Oost: zwart-geel-zwart
+        else if (soort.includes('west') || typeLower.includes('west')) finalSvg = threeBandSvg(YELLOW, BLACK);     // West: geel-zwart-geel
         else finalSvg = splitHorizSvg(BLACK, YELLOW);                               // Generic cardinal
     } else if (isMixed) {
         const separator = colorLower.includes('-') ? '-' : '/';
