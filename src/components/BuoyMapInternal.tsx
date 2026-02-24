@@ -9,7 +9,7 @@ import { useEffect, useCallback, useState } from "react";
 
 // Helper to center map when selection changes
 // Helper to handle map effects (load, center, reset)
-function MapController({ selectedBuoyId, buoys }: { selectedBuoyId: string | null, buoys: DeployedBuoy[] }) {
+function MapController({ selectedBuoyId, buoys, activeZone }: { selectedBuoyId: string | null, buoys: DeployedBuoy[], activeZone?: string | null }) {
     const map = useMap();
 
     // Store bounds in ref to use for reset
@@ -23,8 +23,15 @@ function MapController({ selectedBuoyId, buoys }: { selectedBuoyId: string | nul
         const bounds = getBounds();
         if (bounds && !selectedBuoyId) {
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        } else if (!bounds && !selectedBuoyId) {
+            // If no buoys exist, fall back to center of active zone
+            if (activeZone === 'zone_zeetijger') {
+                map.setView([51.23, 2.92], 13);
+            } else {
+                map.setView([51.2194, 4.4025], 13);
+            }
         }
-    }, [map, getBounds, selectedBuoyId]);
+    }, [map, getBounds, selectedBuoyId, activeZone]);
 
     // Center on selection
     useEffect(() => {
@@ -193,7 +200,7 @@ export default function BuoyMapInternal({
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 />
 
-                <MapController selectedBuoyId={selectedBuoyId || null} buoys={buoys} />
+                <MapController selectedBuoyId={selectedBuoyId || null} buoys={buoys} activeZone={activeZone} />
                 <ResetZoomControl buoys={buoys} activeZone={activeZone} />
 
                 {buoys.map((buoy) => {
