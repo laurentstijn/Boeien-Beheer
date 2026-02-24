@@ -129,7 +129,15 @@ export function StockManagement({ title, assets, category, itemTypes, showColor 
         else if (asset.status === 'deployed') row.deployed++;
     });
 
-    const sortedRows = Array.from(rows.values())
+    const visibleRows = Array.from(rows.values()).filter(row => {
+        const hasAssets = row.inStock > 0 || row.maintenance > 0 || row.deployed > 0;
+        const isGlobal = !row.itemType?.specs?.zone;
+        return hasAssets || !isGlobal;
+    });
+
+    if (visibleRows.length === 0) return null;
+
+    const sortedRows = visibleRows
         .sort((a, b) => {
             // 1. Group sorting
             if (a.group && b.group) {

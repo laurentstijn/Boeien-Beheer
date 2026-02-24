@@ -82,10 +82,14 @@ export function ChainManagement({ title, assets, itemTypes, buoys = [] }: ChainM
             assets: matches
         };
     }).filter(row => {
-        // Always show the standard types ("Rood", "Blauw", etc.) even if empty
+        // Always show the standard types ("Rood", "Blauw", etc.) ONLY IF they have assets OR are zone-specific
         const isStandard = CHAIN_TYPES.some(t => t.match === row.match);
-        // For custom types, only show if there are assets (total > 0)
-        return isStandard || row.total > 0;
+        const hasAssets = row.total > 0;
+        const isGlobal = !(row.specs as any)?.zone;
+
+        // If it has assets, ALWAYS show it.
+        // If it doesn't have assets, ONLY show it if it was explicitly created FOR this zone (isGlobal === false).
+        return hasAssets || !isGlobal;
     });
 
     // Optional: Sort rows to keep Rood/Blauw/etc at the top if desired, or just alphabetical
