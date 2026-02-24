@@ -230,7 +230,7 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
                             title="Wachtwoord wijzigen"
                         >
                             <KeyRound className="w-4 h-4" />
-                            <span className="text-xs font-semibold hidden md:inline">Wachtwoord</span>
+                            <span className="text-xs font-semibold hidden md:inline">Wachtwoord Wijzigen</span>
                         </button>
                         <button
                             onClick={handleLogout}
