@@ -92,18 +92,20 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
 
             let hwDueSoon = buoys.filter(b => {
-                if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
+                if (b.status === 'Hidden' || b.status === 'Lost') return false;
                 if (b.tideRestriction !== 'Hoog water') return false;
-                if (!b.nextServiceDue) return false;
+                if (!b.nextServiceDue && b.status !== 'Niet OK' && b.status !== 'Maintenance') return false;
                 if (plannedBuoyIds.has(b.id)) return false;
 
-                const dueDate = new Date(b.nextServiceDue);
+                if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
+
+                const dueDate = new Date(b.nextServiceDue || 0);
                 return dueDate <= limitDate;
             });
 
             // 1. Delineate strictly OVERDUE buoys into two tiers
             const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-            const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
+            const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
 
             // 2. Sort both tiers chronologically (most urgent first)
             tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
@@ -218,16 +220,19 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             // Since they don't depend on the tide, we just slot the most urgent ones into the remaining 2-per-day capacity slots
             let nonTideOverdue = buoys
                 .filter(b => {
-                    if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
+                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
                     if (b.tideRestriction === 'Hoog water') return false;
-                    if (!b.nextServiceDue) return false;
                     if (plannedBuoyIds.has(b.id)) return false;
-                    return b.nextServiceDue <= limitDate.toISOString().split('T')[0];
+
+                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
+
+                    if (!b.nextServiceDue) return false;
+                    return new Date(b.nextServiceDue) <= limitDate;
                 });
 
             // Apply the same two-tier priority for non-tide buoys
             const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-            const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
+            const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
 
             ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
             ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());

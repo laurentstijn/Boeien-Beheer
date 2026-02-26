@@ -32,17 +32,17 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                 // --- TIDE BUOYS ---
                 let hwDueSoon = initialBuoys.filter(b => {
                     if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                    // For the report, we only care about buoys that actually need service (including 'OK' but technically due soon)
-                    if (b.status === 'OK' && !b.nextServiceDue) return false;
+                    if (b.tideRestriction !== 'Hoog water') return false;
 
-                    // The report is only for maintenance, so if it's 'OK' it MUST be due soon to appear
-                    if (b.status === 'OK' && b.nextServiceDue && new Date(b.nextServiceDue) > limitDate) return false;
+                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
 
-                    return b.tideRestriction === 'Hoog water';
+                    if (!b.nextServiceDue) return false;
+                    const dueDate = new Date(b.nextServiceDue);
+                    return dueDate <= limitDate;
                 });
 
                 const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-                const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
+                const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
 
                 tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
                 tier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
@@ -150,16 +150,16 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                 // --- NON-TIDE BUOYS ---
                 let nonTideOverdue = initialBuoys.filter(b => {
                     if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                    if (b.tideRestriction === 'Hoog water') return false; // Handled above
+                    if (b.tideRestriction === 'Hoog water') return false;
 
-                    if (b.status === 'OK' && !b.nextServiceDue) return false;
-                    if (b.status === 'OK' && b.nextServiceDue && new Date(b.nextServiceDue) > limitDate) return false;
+                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
 
-                    return true;
+                    if (!b.nextServiceDue) return false;
+                    return new Date(b.nextServiceDue) <= limitDate;
                 });
 
                 const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-                const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
+                const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
 
                 ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
                 ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
