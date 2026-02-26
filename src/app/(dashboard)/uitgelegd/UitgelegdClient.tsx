@@ -124,8 +124,8 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                 for (const b of hwDueSoon) {
                     let nearestStation = TIDE_STATIONS[0];
-                    const lat = b.metadata?.location?.lat;
-                    const lng = b.metadata?.location?.lng;
+                    const lat = b.location?.lat || b.metadata?.location?.lat;
+                    const lng = b.location?.lng || b.metadata?.location?.lng;
                     if (lat && lng) {
                         nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
                             const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
