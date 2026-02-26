@@ -91,7 +91,9 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             limitDate.setDate(limitDate.getDate() + 10);
             limitDate.setHours(23, 59, 59, 999);
 
-            const hwDueSoon = buoys.filter(b => {
+            const todayStrStrict = new Date().toISOString().split('T')[0];
+
+            let hwDueSoon = buoys.filter(b => {
                 if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
                 if (b.tideRestriction !== 'Hoog water') return false;
                 if (!b.nextServiceDue) return false;
@@ -99,12 +101,19 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                 const dueDate = new Date(b.nextServiceDue);
                 return dueDate <= limitDate;
-            }).sort((a, b) => {
-                // Ensure genuinely overdue buoys get the tide slots first!
-                const dateA = new Date(a.nextServiceDue!).getTime();
-                const dateB = new Date(b.nextServiceDue!).getTime();
-                return dateA - dateB;
             });
+
+            // 1. Separate strictly OVERDUE buoys from UPCOMING buoys
+            const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue! < todayStrStrict);
+            const upcoming = hwDueSoon.filter(b => b.nextServiceDue! >= todayStrStrict);
+
+            // 2. Sort both arrays chronologically (most urgent first)
+            strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
+            upcoming.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
+
+            // 3. First feed all overdue buoys into the pipeline. If there are massive amounts, capping them ensures we don't fetch/process infinite data.
+            // But we prioritize them aggressively before appending the upcoming ones.
+            hwDueSoon = [...strictlyOverdue, ...upcoming];
 
             if (hwDueSoon.length > 0) {
                 // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
@@ -142,13 +151,14 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     buoysByStation[nearestStation.astroHW_id].push(b);
                 }
 
-                const now = new Date();
                 // To track globally how many buoys we planned per day across all stations
                 const assignedPerDay: Record<string, number> = {};
+                const now = new Date();
 
-                for (const [stationId, buoysForStation] of Object.entries(buoysByStation)) {
+                // 1. Fetch all required station timelines in parallel
+                const stationTimelines: Record<string, any[]> = {};
+                const fetchPromises = Object.keys(buoysByStation).map(async (stationId) => {
                     const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
-
                     if (tideRes.ok) {
                         const tideData = await tideRes.json();
                         const measurements = tideData[0]?.data || [];
@@ -156,15 +166,12 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                         for (const [timestampStr, level] of measurements) {
                             const dateObj = new Date(timestampStr);
-
-                            // 1. Must be in the future (ignore past tides for today)
                             if (dateObj < now) continue;
 
                             const hour = dateObj.getHours();
                             const min = dateObj.getMinutes();
-                            const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 6 is Saturday
+                            const dayOfWeek = dateObj.getDay();
 
-                            // 2. Only allow weekdays (1-5), between 11-16h, and high water >= 4m
                             if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
                                 validWindows.push({
                                     date: dateObj.toISOString().split('T')[0],
@@ -173,30 +180,37 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                 });
                             }
                         }
+                        stationTimelines[stationId] = validWindows;
+                    }
+                });
 
-                        if (validWindows.length > 0) {
-                            let bIndex = 0;
-                            for (const win of validWindows) {
-                                if (bIndex >= buoysForStation.length) break;
+                await Promise.all(fetchPromises);
 
-                                // Ensure we don't exceed 2 globally for this specific day
-                                if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+                // 2. Process buoys strictly in order of urgency
+                for (const b of hwDueSoon) {
+                    // Find which station this buoy belongs to
+                    const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some(buoy => buoy.id === b.id));
+                    if (!stationId) continue;
 
-                                while (assignedPerDay[win.date] < 2 && bIndex < buoysForStation.length) {
-                                    const b = buoysForStation[bIndex];
-                                    const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
-                                    dbPlans.push({
-                                        id: `magic-${b.id}`,
-                                        buoy_id: b.id,
-                                        planned_date: win.date,
-                                        notes: `VIRTUELE PLANNING: Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
-                                        is_virtual: true,
-                                        virtual_time: win.time
-                                    });
-                                    assignedPerDay[win.date]++;
-                                    bIndex++;
-                                }
-                            }
+                    const windows = stationTimelines[stationId] || [];
+                    const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
+
+                    // Find the earliest valid window for this specific buoy where the day hasn't reached the 2-buoy global limit
+                    for (const win of windows) {
+                        if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+
+                        if (assignedPerDay[win.date] < 2) {
+                            dbPlans.push({
+                                id: `magic-${b.id}`,
+                                buoy_id: b.id,
+                                planned_date: win.date,
+                                notes: `VIRTUELE PLANNING: Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
+                                is_virtual: true,
+                                virtual_time: win.time
+                            });
+
+                            assignedPerDay[win.date]++;
+                            break; // Stop looking for slots for this buoy, move to the next buoy
                         }
                     }
                 }
