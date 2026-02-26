@@ -25,7 +25,7 @@ interface UitgelegdClientProps {
     activeZone?: string | null;
 }
 
-type SortField = 'name' | 'type' | 'maintenance' | 'status' | 'extern';
+type SortField = 'name' | 'type' | 'maintenance' | 'status' | 'extern' | 'gepland';
 type SortOrder = 'asc' | 'desc';
 
 export default function UitgelegdClient({ initialBuoys, buoyConfigurations, availableLamps, availableChains = [], availableStones = [], activeZone = null }: UitgelegdClientProps) {
@@ -76,9 +76,12 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
         return 'Yellow';
     };
 
-    // Smart Suggestion: Top 2 oldest overdue buoys that are not already planned, not hidden, and not in 'Aandacht' status
+    // Smart Suggestion: Top 2 buoys needing maintenance
     const todayPlannedBuoys = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
+        const currentHour = new Date().getHours();
+        const isWorkingHoursHighTide = currentHour >= 11 && currentHour <= 16;
+
         return buoys
             .filter(b =>
                 b.status !== 'Hidden' &&
@@ -88,11 +91,23 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 !plannedEntries.some(p => p.buoy_id === b.id)
             )
             .sort((a, b) => {
-                // Priority to those with tide restrictions
+                // Feature: Hoogwater constraint + Daytime constraint
+                const aHighTide = a.tideRestriction === 'Hoog water';
+                const bHighTide = b.tideRestriction === 'Hoog water';
+
+                // If it's between 11h and 16h, highly prioritize 'Hoog water' buoys
+                if (isWorkingHoursHighTide) {
+                    if (aHighTide && !bHighTide) return -1;
+                    if (!aHighTide && bHighTide) return 1;
+                }
+
+                // General Tide Preference
                 const aHasTide = a.tideRestriction && a.tideRestriction !== 'Altijd';
                 const bHasTide = b.tideRestriction && b.tideRestriction !== 'Altijd';
                 if (aHasTide && !bHasTide) return -1;
                 if (!aHasTide && bHasTide) return 1;
+
+                // Otherwise sort by how overdue they are
                 return (a.nextServiceDue! < b.nextServiceDue! ? -1 : 1);
             })
             .slice(0, 2);
@@ -173,8 +188,10 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 const matchesVisibility = showHidden || buoy.status !== 'Hidden';
                 const statusLabel = getStatusLabel(buoy);
                 const isExtern = !!(buoy as any).metadata?.external_customer;
+                const isPlanned = plannedEntries.some(p => p.buoy_id === buoy.id);
                 const matchesStatusFilter =
                     statusFilter === 'all' ||
+                    (statusFilter === 'gepland' ? isPlanned : false) ||
                     (statusFilter === 'extern' ? isExtern : statusLabel.toLowerCase() === statusFilter.toLowerCase());
 
                 return matchesSearch && matchesVisibility && matchesStatusFilter;
@@ -199,6 +216,23 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     const nameA = ((a as any).metadata?.customer_name || '').toLowerCase();
                     const nameB = ((b as any).metadata?.customer_name || '').toLowerCase();
                     comparison = nameA.localeCompare(nameB);
+                }
+
+                else if (sortField === 'gepland') {
+                    const aPlan = plannedEntries.find(p => p.buoy_id === a.id);
+                    const bPlan = plannedEntries.find(p => p.buoy_id === b.id);
+
+                    if (aPlan && bPlan) {
+                        // both planned, sort by date
+                        comparison = new Date(aPlan.planned_date).getTime() - new Date(bPlan.planned_date).getTime();
+                    } else if (aPlan && !bPlan) {
+                        return -1; // planned items first (ignoring asc/desc temporarily to force them to top)
+                    } else if (!aPlan && bPlan) {
+                        return 1;
+                    } else {
+                        // neither planned, sort alphabetically by name as fallback
+                        comparison = (a.name || "").localeCompare(b.name || "", undefined, { numeric: true, sensitivity: 'base' });
+                    }
                 }
 
                 return sortOrder === 'asc' ? comparison : -comparison;
@@ -277,6 +311,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                     <button onClick={() => setStatusFilter('ok')} className={clsx("px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap", statusFilter === 'ok' ? "bg-green-100 text-green-700 shadow" : "text-app-text-secondary hover:text-green-700")}>OK</button>
                                     <button onClick={() => setStatusFilter('niet ok')} className={clsx("px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap", statusFilter === 'niet ok' ? "bg-red-100 text-red-700 shadow" : "text-app-text-secondary hover:text-red-700")}>Niet OK</button>
                                     <button onClick={() => setStatusFilter('aandacht')} className={clsx("px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap", statusFilter === 'aandacht' ? "bg-orange-100 text-orange-700 shadow" : "text-app-text-secondary hover:text-orange-700")}>Aandacht</button>
+                                    <button onClick={() => setStatusFilter('gepland')} className={clsx("px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap", statusFilter === 'gepland' ? "bg-purple-100 text-purple-700 shadow" : "text-app-text-secondary hover:text-purple-600")}>Gepland</button>
                                     <button onClick={() => setStatusFilter('extern')} className={clsx("px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap", statusFilter === 'extern' ? "bg-blue-100 text-blue-700 shadow" : "text-app-text-secondary hover:text-blue-600")}>Extern</button>
                                 </div>
 
@@ -319,6 +354,9 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                         </th>
                                         <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
                                             <div className="flex items-center">Status <SortIcon field="status" /></div>
+                                        </th>
+                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('gepland')}>
+                                            <div className="flex items-center">Planning <SortIcon field="gepland" /></div>
                                         </th>
                                         <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('extern')}>
                                             <div className="flex items-center"><Building2 className="w-3 h-3 mr-1 text-blue-400" />Externe Klant <SortIcon field="extern" /></div>
