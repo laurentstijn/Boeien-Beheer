@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, MapPin, Save, Anchor, Link, CircleDot, Lightbulb, Hexagon } from "lucide-react";
+import { X, MapPin, Save, Anchor, Link, CircleDot, Lightbulb, Hexagon, Wand2 } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
+import { parseSmartInput } from "@/lib/coordinates";
+
 import { BuoyIcon } from "./BuoyIcon";
 import { SearchableSelect } from "./SearchableSelect";
 import { StoneIcon } from "./StoneIcon";
@@ -214,6 +217,31 @@ export function DeployBuoyDialog({
                         <div className="space-y-6">
                             <h3 className="font-medium text-app-text-primary border-b border-app-border pb-2">3. Locatie & Bevestigen</h3>
 
+                            {/* Slim Plakken (Moved here to only show in Location step) */}
+                            <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-3 border-dashed">
+                                <label className="block text-xs font-semibold text-app-text-primary mb-2 flex items-center gap-2">
+                                    <Wand2 className="w-3 h-3 text-purple-500" /> Slim Plakken (Automatisch)
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Plak coördinaten (bijv. 143171.72E; 226052.47N)"
+                                    className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:border-purple-500 focus:outline-none mb-1 font-mono placeholder:font-sans"
+                                    onChange={(e) => {
+                                        const res = parseSmartInput(e.target.value);
+                                        if (res && !res.error && res.lat !== null && res.lng !== null) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                lat: res.lat!.toFixed(6),
+                                                lng: res.lng!.toFixed(6)
+                                            }));
+                                            toast.success(`Locatie herkend (${res.formatDetected})`);
+                                            e.target.value = ''; // Clear after successful parse
+                                        }
+                                    }}
+                                />
+                                <p className="text-[10px] text-app-text-secondary">Plak hier coördinaten om de velden hieronder automatisch in te vullen.</p>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-medium text-app-text-secondary mb-1">Breedtegraad (Lat)</label>
@@ -264,13 +292,21 @@ export function DeployBuoyDialog({
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-app-border bg-app-surface/50 flex justify-between">
-                    <button
-                        onClick={() => setStep(s => Math.max(1, s - 1))}
-                        disabled={step === 1 || loading}
-                        className="px-4 py-2 text-sm font-medium text-app-text-secondary hover:text-app-text-primary disabled:opacity-50"
-                    >
-                        Vorige
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-app-text-secondary hover:text-red-500 transition-colors"
+                        >
+                            Annuleren
+                        </button>
+                        <button
+                            onClick={() => setStep(s => Math.max(1, s - 1))}
+                            disabled={step === 1 || loading}
+                            className="px-4 py-2 text-sm font-medium text-app-text-secondary hover:text-app-text-primary disabled:opacity-50"
+                        >
+                            Vorige
+                        </button>
+                    </div>
 
                     {step < 3 ? (
                         <button

@@ -22,10 +22,13 @@ import {
     ChevronDown,
     ChevronRight,
     ClipboardList,
-    Users
+    Users,
+    Calculator,
+    X
 } from "lucide-react";
 import clsx from "clsx";
 import { useSupabase } from "@/components/SupabaseProvider";
+import CoordinateCalculator from "./CoordinateCalculator";
 
 
 interface SidebarProps {
@@ -39,6 +42,7 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
     const { session } = useSupabase();
     const isAdmin = session?.user?.user_metadata?.role === 'admin';
     const [openGroupTitle, setOpenGroupTitle] = useState<string | null>("Stock & Inventaris");
+    const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
 
     const toggleGroup = (title: string | null) => {
         if (!title) return;
@@ -194,17 +198,46 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
                         Boei Uitleggen
                     </Link>
 
-                    <a
-                        href="/api/export-backup"
+                    {isAdmin && (
+                        <a
+                            href="/api/export-backup"
+                            className="w-full bg-app-surface hover:bg-app-surface-hover text-app-text-secondary hover:text-blue-500 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all border border-app-border text-xs"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export Backup (Excel)
+                        </a>
+                    )}
+
+                    <button
+                        onClick={() => setIsCalculatorOpen(true)}
                         className="w-full bg-app-surface hover:bg-app-surface-hover text-app-text-secondary hover:text-blue-500 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all border border-app-border text-xs"
-                        target="_blank"
-                        rel="noopener noreferrer"
                     >
-                        <Download className="w-4 h-4" />
-                        Export Backup (Excel)
-                    </a>
+                        <Calculator className="w-4 h-4" />
+                        Coördinaten Omzetten
+                    </button>
                 </div>
             </aside>
+
+            {/* Coordinate Calculator Modal */}
+            {isCalculatorOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setIsCalculatorOpen(false)}
+                    />
+                    <div className="relative w-full max-w-md bg-app-surface border border-app-border rounded-xl shadow-2xl animate-in zoom-in-95 duration-200">
+                        <button
+                            onClick={() => setIsCalculatorOpen(false)}
+                            className="absolute right-4 top-4 p-1.5 bg-app-bg hover:bg-app-surface-hover text-app-text-secondary rounded-lg transition-colors z-10"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <CoordinateCalculator />
+                    </div>
+                </div>
+            )}
         </>
     );
 }

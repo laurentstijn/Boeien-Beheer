@@ -6,12 +6,14 @@ import {
     CircleDot, Lightbulb, Hexagon, ChevronRight,
     ChevronLeft, Check, Ship, Loader2, Sparkles,
     Navigation, Map as MapIcon, ChevronDown, Search,
-    Camera, Upload
+    Camera, Upload, Wand2
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
 import { deployBuoyAction } from "@/app/actions";
 import { BuoyIcon } from "@/components/BuoyIcon";
+import { parseSmartInput } from "@/lib/coordinates";
+import { toast } from "sonner";
 import { BuoyMap } from "@/components/BuoyMap";
 import { ChainIcon } from "@/components/ChainIcon";
 import { StoneIcon } from "@/components/StoneIcon";
@@ -488,6 +490,36 @@ export default function UitleggenClient({
                                 <p className="text-app-text-secondary">Geef de locatie een naam en vul de GPS coördinaten in.</p>
                             </div>
 
+                            {/* SLIM PLAKKEN (Automatisch) - Moved here for visibility only in Location step */}
+                            <div className="bg-purple-500/5 border border-purple-500/20 rounded-3xl p-6 shadow-sm border-dashed">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="p-1.5 bg-purple-500/10 rounded-lg">
+                                        <Wand2 className="w-4 h-4 text-purple-500" />
+                                    </div>
+                                    <span className="text-sm font-black text-app-text-primary uppercase tracking-wider">Slim Plakken (Automatisch)</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Plak hier coördinaten (bijv. 143171.72E; 226052.47N of 51° 14',367 N 004° 22',682 E)"
+                                    className="w-full bg-app-surface border border-app-border rounded-2xl px-6 py-4 text-app-text-primary focus:border-purple-500 focus:outline-none transition-all font-mono placeholder:font-sans text-sm"
+                                    onChange={(e) => {
+                                        const res = parseSmartInput(e.target.value);
+                                        if (res && !res.error && res.lat !== null && res.lng !== null) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                lat: res.lat!.toFixed(6),
+                                                lng: res.lng!.toFixed(6)
+                                            }));
+                                            toast.success(`Locatie herkend (${res.formatDetected})`);
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                />
+                                <div className="mt-2 text-[10px] text-app-text-secondary font-medium ml-1">
+                                    Plak hier de tekst die je wilt omzetten. De velden hieronder worden dan automatisch ingevuld.
+                                </div>
+                            </div>
+
                             <div className="space-y-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-app-text-secondary uppercase tracking-widest ml-1">Positie Naam</label>
@@ -890,8 +922,9 @@ export default function UitleggenClient({
 
                 <div className="flex items-center gap-4">
                     <button
+                        type="button"
                         onClick={() => router.push('/uitgelegd')}
-                        className="px-6 py-3 text-app-text-secondary/50 font-bold hover:text-app-text-secondary transition-all"
+                        className="px-6 py-3 text-app-text-secondary hover:text-red-500 font-bold transition-all"
                     >
                         Annuleren
                     </button>
