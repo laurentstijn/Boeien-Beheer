@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Ship, Calendar, AlertTriangle, Printer, Clock, Droplets } from "lucide-react";
+import { Ship, Calendar, AlertTriangle, Printer, Clock, Droplets, Wand2 } from "lucide-react";
 import clsx from "clsx";
 
 interface RapportenClientProps {
@@ -235,10 +235,10 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                         <thead className="bg-app-bg text-app-text-secondary border-b border-app-border print:bg-transparent print:text-black">
                             <tr>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Datum Inplanning</th>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider w-16 print:px-2">#</th>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Gepland</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Boei Naam</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Type & Kleur</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Locatie</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Oorspronkelijke Vervaldatum</th>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Vervaldatum</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-app-border print:divide-gray-300">
@@ -254,16 +254,24 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
 
                                 return (
                                     <tr key={`${buoy.id}-${idx}`} className="hover:bg-app-surface-hover print:hover:bg-transparent">
-                                        <td className="px-6 py-4 print:px-2 print:py-2">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-bold text-blue-800 print:text-black text-base">{new Date(plan.planned_date).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                                                {plan.virtual_time && (
-                                                    <span className="inline-flex items-center gap-1 font-bold bg-blue-100 print:bg-transparent text-blue-800 print:text-black px-2 py-0.5 rounded text-xs w-max border border-blue-200 print:border-none print:p-0">
-                                                        <Droplets className="w-3 h-3 text-blue-600 print:text-black" />
-                                                        {plan.virtual_time}
+                                        <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
+                                            <div className="flex flex-col gap-1 opacity-90">
+                                                <span
+                                                    style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+                                                    className={clsx(
+                                                        "text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm flex items-center w-max gap-1",
+                                                        plan.virtual_time ? "bg-purple-500" : "bg-blue-600"
+                                                    )}
+                                                >
+                                                    <Calendar className="w-2.5 h-2.5" />
+                                                    {plan.virtual_time ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(plan.planned_date).toLocaleDateString('nl-BE')} {plan.virtual_time ? `(${plan.virtual_time})` : ''}
+                                                    {plan.virtual_time && <Wand2 className="w-2.5 h-2.5 ml-0.5" />}
+                                                </span>
+                                                {plan.notes && (
+                                                    <span className="text-[9px] text-purple-600 italic line-clamp-2 max-w-[200px] leading-tight mt-1">
+                                                        {plan.notes}
                                                     </span>
                                                 )}
-                                                <span className="text-[10px] text-gray-500 print:text-gray-700 italic max-w-[200px] leading-tight mt-1">{plan.notes}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top pt-5">
@@ -280,12 +288,16 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                         </td>
                                         <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
                                             {buoy.nextServiceDue ? (
-                                                <span className={clsx(
-                                                    "font-bold",
-                                                    isOverdue ? "text-red-600 print:text-red-700" : "text-app-text-primary print:text-black"
-                                                )}>
+                                                <span
+                                                    style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
+                                                    className={clsx(
+                                                        "text-[11px] font-bold px-2 py-0.5 rounded shadow-sm text-center inline-block",
+                                                        isOverdue
+                                                            ? "bg-red-100 text-red-700"
+                                                            : "bg-green-100 text-green-700"
+                                                    )}
+                                                >
                                                     {new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE')}
-                                                    {isOverdue && <AlertTriangle className="w-3 h-3 inline ml-1 text-red-600 print:text-red-700" />}
                                                 </span>
                                             ) : (
                                                 <span className="text-orange-500 font-bold print:text-orange-700">Aandacht / Geen Datum</span>
