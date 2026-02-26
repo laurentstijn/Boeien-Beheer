@@ -151,32 +151,48 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
 
                                                 if (!station || !tidePredictions.predictions?.[station.name]) return null;
 
-                                                const targetDate = (!buoy.nextServiceDue || isOverdue)
-                                                    ? new Date()
-                                                    : new Date(buoy.nextServiceDue);
+                                                let validMatches: any[] = [];
 
-                                                const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
                                                 const preds = tidePredictions.predictions[station.name];
-
-                                                let times: any[] = [];
                                                 if (buoy.tideRestriction === 'Hoog water') {
-                                                    times = preds.highWaters.filter((h: any) => h.date === targetDateStr);
+                                                    const hwList = preds.highWaters || [];
+                                                    const todayStr = new Date().toISOString().split('T')[0];
+
+                                                    // Filter for matches that are today or later, value >= 4.0, hour between 11-16
+                                                    validMatches = hwList.filter((h: any) => {
+                                                        if (h.date < todayStr) return false;
+                                                        if (h.level < 4.0) return false;
+                                                        const parts = h.time.split(':');
+                                                        const hNum = parseInt(parts[0], 10);
+                                                        return hNum >= 11 && hNum <= 16;
+                                                    }).slice(0, 3); // Take top 3 upcoming slots
                                                 } else if (buoy.tideRestriction === 'Laag water') {
-                                                    times = preds.lowWaters.filter((l: any) => l.date === targetDateStr);
+                                                    // Simple fallback for laag water if needed
+                                                    const targetDateStr = (!buoy.nextServiceDue || isOverdue) ? new Date().toISOString().split('T')[0] : new Date(buoy.nextServiceDue).toISOString().split('T')[0];
+                                                    validMatches = (preds.lowWaters || []).filter((l: any) => l.date === targetDateStr);
                                                 }
 
-                                                if (times.length === 0) return null;
+                                                if (validMatches.length === 0) return null;
 
                                                 return (
-                                                    <div className="mt-1 flex items-start gap-1 text-[10px] bg-blue-50/50 p-1.5 rounded border border-blue-100 print:bg-transparent print:border-none print:p-0 print:mt-0 text-blue-700 print:text-gray-600">
-                                                        <Droplets className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                                                        <div>
-                                                            <span className="font-semibold block print:inline">Voorspelling {isOverdue || !buoy.nextServiceDue ? 'vandaag' : 'op voorziene datum'}:</span>
-                                                            {times.map((t, idx) => (
-                                                                <span key={idx} className="block font-bold">
-                                                                    {t.time}
-                                                                </span>
-                                                            ))}
+                                                    <div className="mt-1.5 flex flex-col gap-1 text-[10px] bg-purple-50 p-2 rounded border border-purple-200 print:bg-transparent print:border-none print:p-0 print:mt-0 text-purple-800 print:text-gray-600">
+                                                        <div className="flex items-center gap-1 font-bold">
+                                                            <Droplets className="w-3 h-3 text-purple-600 print:text-gray-600" />
+                                                            Kansberekening ({station.name}):
+                                                        </div>
+                                                        <div className="flex flex-col gap-0.5 pl-4">
+                                                            {validMatches.map((match: any, idx: number) => {
+                                                                const dObj = new Date(match.date);
+                                                                const dStr = `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}`;
+                                                                return (
+                                                                    <div key={idx} className="flex items-center gap-1.5">
+                                                                        <span className="font-semibold">{dStr}</span>
+                                                                        <span className="text-purple-600/50 print:hidden">•</span>
+                                                                        <span className="font-bold bg-white print:bg-transparent px-1 rounded shadow-sm print:shadow-none border border-purple-100 print:border-none">{match.time}</span>
+                                                                        <span className="text-[9px] text-purple-700/70 italic">({match.level.toFixed(2)}m)</span>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 );

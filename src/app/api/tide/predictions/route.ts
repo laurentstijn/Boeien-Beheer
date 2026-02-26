@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
 const PREDICTION_STATIONS = [
-    { id: "04112719010", stationNo: "04zes01a-1066", name: "Prosperpolder", lat: 51.3483272650923, lng: 4.23793225487478 },
-    { id: "04113438010", stationNo: "04zes14a-1066", name: "Kallo", lat: 51.2679979571716, lng: 4.29852383884503 },
-    { id: "04112709010", stationNo: "04zes21a-1066", name: "Antwerpen", lat: 51.227468146743, lng: 4.39991370684368 },
-    { id: "04112714010", stationNo: "04BS-WIN-AFW-1095", name: "Rupelmonde", lat: 51.1359646843388, lng: 4.32230864155543 },
-    { id: "04113403010", stationNo: "04BS-RUP-1095", name: "Boom", lat: 51.0868580992141, lng: 4.35368553727916 },
-    { id: "04113493010", stationNo: "04zes36a-1066", name: "Temse", lat: 51.1228087597494, lng: 4.21867338754706 },
-    { id: "04113413010", stationNo: "04zes39a-1066", name: "Driegoten", lat: 51.0925568254825, lng: 4.17099518412599 }
+    { id: "04112717010", stationNo: "04zes01a-1066", name: "Prosperpolder", lat: 51.3483272650923, lng: 4.23793225487478 },
+    { id: "04113436010", stationNo: "04zes14a-1066", name: "Kallo", lat: 51.2679979571716, lng: 4.29852383884503 },
+    { id: "04112707010", stationNo: "04zes21a-1066", name: "Antwerpen", lat: 51.227468146743, lng: 4.39991370684368 },
+    { id: "04112712010", stationNo: "04BS-WIN-AFW-1095", name: "Rupelmonde", lat: 51.1359646843388, lng: 4.32230864155543 },
+    { id: "04113401010", stationNo: "04BS-RUP-1095", name: "Boom", lat: 51.0868580992141, lng: 4.35368553727916 },
+    { id: "04113491010", stationNo: "04zes36a-1066", name: "Temse", lat: 51.1228087597494, lng: 4.21867338754706 },
+    { id: "04113411010", stationNo: "04zes39a-1066", name: "Driegoten", lat: 51.0925568254825, lng: 4.17099518412599 }
 ];
 
 export async function GET(request: Request) {
