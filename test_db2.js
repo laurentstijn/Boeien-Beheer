@@ -44,18 +44,28 @@ var supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 var supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
 function run() {
     return __awaiter(this, void 0, void 0, function () {
-        var allBuoys, hwBuoys, _i, hwBuoys_1, b;
+        var buoys, buoy, testDate, error;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, supabase.from('deployed_buoys').select('*')];
+                case 0: return [4 /*yield*/, supabase.from('deployed_buoys').select('id, name').limit(1)];
                 case 1:
-                    allBuoys = (_a.sent()).data;
-                    hwBuoys = allBuoys.filter(function (b) { return b.tideRestriction === 'Hoog water'; });
-                    console.log("Total Hoog water buoys: ".concat(hwBuoys.length));
-                    for (_i = 0, hwBuoys_1 = hwBuoys; _i < hwBuoys_1.length; _i++) {
-                        b = hwBuoys_1[_i];
-                        console.log("- ".concat(b.name, " (Due: ").concat(b.nextServiceDue, ")"));
-                    }
+                    buoys = (_a.sent()).data;
+                    if (!buoys || buoys.length === 0)
+                        return [2 /*return*/];
+                    buoy = buoys[0];
+                    testDate = new Date();
+                    testDate.setDate(testDate.getDate() + 2); // In 2 days
+                    return [4 /*yield*/, supabase.from('planning_entries').insert({
+                            buoy_id: buoy.id,
+                            notes: 'Test planning om de filter te proberen',
+                            planned_date: testDate.toISOString().split('T')[0]
+                        })];
+                case 2:
+                    error = (_a.sent()).error;
+                    if (error)
+                        console.error("Error inserting:", error);
+                    else
+                        console.log("\u2713 Added test planning for buoy: ".concat(buoy.name, " on ").concat(testDate.toISOString().split('T')[0]));
                     return [2 /*return*/];
             }
         });

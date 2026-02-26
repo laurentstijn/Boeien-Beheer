@@ -217,6 +217,9 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
                         <Calculator className="w-4 h-4" />
                         Coördinaten Omzetten
                     </button>
+                    <div className="pt-2 pb-1 text-center text-[10px] text-app-text-secondary/40 font-medium tracking-widest uppercase">
+                        @laurentstijn
+                    </div>
                 </div>
             </aside>
 
