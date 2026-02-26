@@ -76,32 +76,34 @@ export function BuoySummary({ assets }: BuoySummaryProps) {
                             <h3 className="font-semibold text-app-text-primary">{model.name}</h3>
                             <span className="text-sm text-app-text-secondary">Totaal: {totalCount}</span>
                         </div>
-                        <table className="w-full text-left text-sm text-app-text-secondary">
-                            <thead className="bg-app-bg text-app-text-primary font-medium uppercase text-xs">
-                                <tr>
-                                    <th className="px-6 py-4 w-16">Item</th>
-                                    <th className="px-6 py-4">Kleur</th>
-                                    <th className="px-6 py-4 text-center">Aantal</th>
-                                    <th className="px-6 py-4 text-center">Reserve Drijflichamen</th>
-                                    <th className="px-6 py-4 text-center">In Onderhoud</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-app-border">
-                                {colorStats.filter(stat => stat.count > 0 || stat.reserve > 0).map((stat) => (
-                                    <tr key={stat.color} className="hover:bg-app-surface-hover transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="w-8 h-8 rounded-full bg-app-bg border border-app-border flex items-center justify-center">
-                                                <BuoyIcon color={stat.color} size="sm" />
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-app-text-primary">{stat.color}</td>
-                                        <td className="px-6 py-4 text-center font-bold text-app-text-primary">{stat.count}</td>
-                                        <td className="px-6 py-4 text-center text-app-text-secondary">{stat.reserve}</td>
-                                        <td className="px-6 py-4 text-center text-app-text-secondary">{stat.maintenance}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-app-text-secondary">
+                                <thead className="bg-app-bg text-app-text-primary font-medium uppercase text-xs">
+                                    <tr>
+                                        <th className="px-6 py-4 w-16">Item</th>
+                                        <th className="px-6 py-4">Kleur</th>
+                                        <th className="px-6 py-4 text-center">Aantal</th>
+                                        <th className="px-6 py-4 text-center">Reserve Drijflichamen</th>
+                                        <th className="px-6 py-4 text-center">In Onderhoud</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-app-border">
+                                    {colorStats.filter(stat => stat.count > 0 || stat.reserve > 0).map((stat) => (
+                                        <tr key={stat.color} className="hover:bg-app-surface-hover transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="w-8 h-8 rounded-full bg-app-bg border border-app-border flex items-center justify-center">
+                                                    <BuoyIcon color={stat.color} size="sm" />
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-app-text-primary">{stat.color}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-app-text-primary">{stat.count}</td>
+                                            <td className="px-6 py-4 text-center text-app-text-secondary">{stat.reserve}</td>
+                                            <td className="px-6 py-4 text-center text-app-text-secondary">{stat.maintenance}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 );
             })}

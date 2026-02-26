@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Link as LinkIcon,
@@ -27,13 +27,14 @@ import {
 import clsx from "clsx";
 import { useSupabase } from "@/components/SupabaseProvider";
 
-// ... imports
 
 interface SidebarProps {
     counts?: Record<string, number>;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
-export function Sidebar({ counts = {} }: SidebarProps) {
+export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const { session } = useSupabase();
     const isAdmin = session?.user?.user_metadata?.role === 'admin';
@@ -78,114 +79,132 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         },
     ];
 
-    // Automatically open the group that contains the current active route, but only once on mount or route change
+    // Automatically open the group that contains the current active route
     // Using an effect avoids state updates during render.
-    import_react_hooks_warning_is_fine_here_if_we_track_pathname: {
-        const [lastPath, setLastPath] = useState(pathname);
-        if (pathname !== lastPath) {
-            setLastPath(pathname);
-            const activeGroup = navGroups.find(g => g.items.some(i => i.href === pathname));
-            if (activeGroup && activeGroup.title) {
-                setOpenGroupTitle(activeGroup.title);
-            }
+    useEffect(() => {
+        const activeGroup = navGroups.find(g => g.items.some(i => i.href === pathname));
+        if (activeGroup && activeGroup.title) {
+            setOpenGroupTitle(activeGroup.title);
         }
-    }
+    }, [pathname]);
 
     return (
-        <aside className="w-64 bg-app-sidebar-bg border-r border-app-border flex flex-col h-screen text-app-text-secondary font-sans transition-colors print:hidden">
-            {/* ... header ... */}
-            <div className="p-6">
-                <h1 className="text-xl font-bold text-app-text-primary flex items-center gap-2">
-                    <div className="w-8 h-8 flex-shrink-0">
-                        <img src="/logo.png" alt="Boei Beheer Logo" className="w-full h-full object-contain filter drop-shadow-sm" />
-                    </div>
-                    <div>
-                        Boei Beheer
-                        <div className="text-xs text-app-text-secondary font-normal italic">
-                            Welkom {isAdmin ? 'Admin' : (session?.user?.user_metadata?.zone === 'zone_zeetijger' ? 'Zeetijger' : 'Zeeschelde')}
-                        </div>
-                    </div>
-                </h1>
-            </div>
+        <>
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+                    onClick={onClose}
+                />
+            )}
 
-            <nav className="flex-1 overflow-y-auto px-4 space-y-4 pb-4 custom-scrollbar">
-                {navGroups.filter(g => !g.adminOnly || isAdmin).map((group, groupIdx) => {
-                    const isCollapsed = isAdmin && group.title !== null && openGroupTitle !== group.title;
-                    return (
-                        <div key={groupIdx} className="space-y-1">
-                            {group.title && (
-                                <button
-                                    onClick={() => isAdmin && toggleGroup(group.title)}
-                                    className={clsx(
-                                        "w-full flex items-center justify-between text-[10px] uppercase font-bold text-app-text-secondary tracking-wider pl-1 pr-2 mb-1 transition-colors",
-                                        isAdmin ? "hover:text-app-text-primary focus:outline-none cursor-pointer" : "cursor-default"
-                                    )}
-                                >
-                                    <span>{group.title}</span>
-                                    {isAdmin && (
-                                        <div className="text-app-text-secondary/50">
-                                            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                        </div>
-                                    )}
-                                </button>
-                            )}
-                            <div className={clsx(
-                                "space-y-1 overflow-hidden transition-all duration-300",
-                                isCollapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100 mt-1"
-                            )}>
-                                {group.items.map((item) => {
-                                    const isActive = pathname === item.href;
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className={clsx(
-                                                "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                                                isActive
-                                                    ? "bg-blue-600 text-white shadow-sm"
-                                                    : "hover:bg-app-surface-hover hover:text-app-text-primary"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <item.icon className="w-4 h-4 transition-colors" />
-                                                {item.name}
-                                            </div>
-                                            {item.count !== null && (
-                                                <span className={clsx(
-                                                    "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
-                                                    isActive ? "bg-white/20 text-white" : "bg-app-surface-hover text-app-text-secondary border border-app-border"
-                                                )}>
-                                                    {item.count}
-                                                </span>
-                                            )}
-                                        </Link>
-                                    );
-                                })}
+            <aside className={clsx(
+                "fixed inset-y-0 left-0 z-50 w-64 bg-app-sidebar-bg border-r border-app-border flex flex-col h-screen text-app-text-secondary font-sans transition-transform duration-300 print:hidden lg:translate-x-0 lg:static",
+                isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
+            )}>
+                <div className="p-6 flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-app-text-primary flex items-center gap-2">
+                        <div className="w-8 h-8 flex-shrink-0">
+                            <img src="/logo.png" alt="Boei Beheer Logo" className="w-full h-full object-contain filter drop-shadow-sm" />
+                        </div>
+                        <div>
+                            Boei Beheer
+                            <div className="text-xs text-app-text-secondary font-normal italic">
+                                Welkom {isAdmin ? 'Admin' : (session?.user?.user_metadata?.zone === 'zone_zeetijger' ? 'Zeetijger' : 'Zeeschelde')}
                             </div>
                         </div>
-                    )
-                })}
-            </nav>
+                    </h1>
 
-            <div className="p-4 border-t border-app-border bg-app-surface/30 space-y-3">
-                <Link
-                    href="/uitleggen"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md"
-                >
-                    <Plus className="w-5 h-5" />
-                    Boei Uitleggen
-                </Link>
+                    {/* Mobile Close Button */}
+                    <button
+                        onClick={onClose}
+                        className="p-2 lg:hidden hover:bg-app-surface-hover rounded-lg text-app-text-secondary"
+                    >
+                        <ChevronRight className="w-5 h-5 rotate-180" />
+                    </button>
+                </div>
 
-                <a
-                    href="/api/export-backup"
-                    className="w-full bg-app-surface hover:bg-app-surface-hover text-app-text-secondary hover:text-blue-500 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all border border-app-border text-xs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <Download className="w-4 h-4" />
-                    Export Backup (Excel)
-                </a>
-            </div>
-        </aside>
+                <nav className="flex-1 overflow-y-auto px-4 space-y-4 pb-4 custom-scrollbar">
+                    {navGroups.filter(g => !g.adminOnly || isAdmin).map((group, groupIdx) => {
+                        const isCollapsed = isAdmin && group.title !== null && openGroupTitle !== group.title;
+                        return (
+                            <div key={groupIdx} className="space-y-1">
+                                {group.title && (
+                                    <button
+                                        onClick={() => isAdmin && toggleGroup(group.title)}
+                                        className={clsx(
+                                            "w-full flex items-center justify-between text-[10px] uppercase font-bold text-app-text-secondary tracking-wider pl-1 pr-2 mb-1 transition-colors",
+                                            isAdmin ? "hover:text-app-text-primary focus:outline-none cursor-pointer" : "cursor-default"
+                                        )}
+                                    >
+                                        <span>{group.title}</span>
+                                        {isAdmin && (
+                                            <div className="text-app-text-secondary/50">
+                                                {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                            </div>
+                                        )}
+                                    </button>
+                                )}
+                                <div className={clsx(
+                                    "space-y-1 overflow-hidden transition-all duration-300",
+                                    isCollapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100 mt-1"
+                                )}>
+                                    {group.items.map((item) => {
+                                        const isActive = pathname === item.href;
+                                        return (
+                                            <Link
+                                                key={item.name}
+                                                href={item.href}
+                                                onClick={() => onClose?.()}
+                                                className={clsx(
+                                                    "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                                    isActive
+                                                        ? "bg-blue-600 text-white shadow-sm"
+                                                        : "hover:bg-app-surface-hover hover:text-app-text-primary"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <item.icon className="w-4 h-4 transition-colors" />
+                                                    {item.name}
+                                                </div>
+                                                {item.count !== null && (
+                                                    <span className={clsx(
+                                                        "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                                                        isActive ? "bg-white/20 text-white" : "bg-app-surface-hover text-app-text-secondary border border-app-border"
+                                                    )}>
+                                                        {item.count}
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </nav>
+
+                <div className="p-4 border-t border-app-border bg-app-surface/30 space-y-3">
+                    <Link
+                        href="/uitleggen"
+                        onClick={() => onClose?.()}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Boei Uitleggen
+                    </Link>
+
+                    <a
+                        href="/api/export-backup"
+                        className="w-full bg-app-surface hover:bg-app-surface-hover text-app-text-secondary hover:text-blue-500 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all border border-app-border text-xs"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Download className="w-4 h-4" />
+                        Export Backup (Excel)
+                    </a>
+                </div>
+            </aside>
+        </>
     );
 }

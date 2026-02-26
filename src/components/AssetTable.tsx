@@ -173,7 +173,7 @@ export function AssetTable({ assets, title, types = [], showSwivel = true, buoys
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                     <Package className="w-5 h-5 text-app-text-secondary" />
                     <h2 className="text-xl font-semibold text-app-text-primary">{title}</h2>
@@ -182,7 +182,7 @@ export function AssetTable({ assets, title, types = [], showSwivel = true, buoys
                     </span>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="relative">
                         <Search className="w-4 h-4 text-app-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
@@ -190,7 +190,7 @@ export function AssetTable({ assets, title, types = [], showSwivel = true, buoys
                             placeholder="Zoeken..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-app-surface border border-app-border rounded-lg pl-9 pr-10 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                            className="w-full bg-app-surface border border-app-border rounded-lg pl-9 pr-10 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                         />
                         {searchQuery && (
                             <button
@@ -203,7 +203,7 @@ export function AssetTable({ assets, title, types = [], showSwivel = true, buoys
                     </div>
                     <button
                         onClick={handleCreate}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
                     >
                         <Plus className="w-4 h-4" />
                         Nieuw Asset

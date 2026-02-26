@@ -1,13 +1,19 @@
 "use client";
 
-import { Calendar, Sun, Moon, Loader2, Check, LogOut, Shield, Ship, Eye, KeyRound, X } from "lucide-react";
+import { Calendar, Sun, Moon, Loader2, Check, LogOut, Shield, Ship, Eye, KeyRound, X, Menu } from "lucide-react";
 import { useState, useEffect, useTransition, useRef } from "react";
 import { updateStockCountDate, setAdminZoneOverride } from "@/app/actions";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 
-export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate?: string }) {
+export function Header({
+    lastStockCountDate: initialDate,
+    onMenuClick
+}: {
+    lastStockCountDate?: string;
+    onMenuClick?: () => void;
+}) {
     const [theme, setTheme] = useState<"dark" | "light">("dark");
     const formatDateForInput = (d: string) => {
         if (!d || d === "Onbekend" || !d.includes('-')) return "";
@@ -162,8 +168,15 @@ export function Header({ lastStockCountDate: initialDate }: { lastStockCountDate
     };
 
     return (
-        <header className="h-16 bg-app-header-bg border-b border-app-border flex items-center justify-between px-6 text-app-text-secondary relative print:hidden">
-            <div className="flex items-center gap-4">
+        <header className="h-16 bg-app-header-bg border-b border-app-border flex items-center justify-between px-4 lg:px-6 text-app-text-secondary relative print:hidden">
+            <div className="flex items-center gap-2 lg:gap-4">
+                <button
+                    onClick={onMenuClick}
+                    className="p-2 hover:bg-app-surface-hover rounded-lg text-app-text-secondary hover:text-app-text-primary transition-colors lg:hidden"
+                    title="Menu openen"
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
                 <button
                     onClick={toggleTheme}
                     className="p-2 hover:bg-app-surface-hover rounded-full text-app-text-secondary hover:text-app-text-primary transition-colors"
