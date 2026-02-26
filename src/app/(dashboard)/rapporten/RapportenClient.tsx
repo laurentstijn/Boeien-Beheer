@@ -29,34 +29,30 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                 limitDate.setDate(limitDate.getDate() + daysLookahead);
                 limitDate.setHours(23, 59, 59, 999);
 
-                // --- TIDE BUOYS ---
-                let hwDueSoon = initialBuoys.filter(b => {
-                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                    if (b.tideRestriction !== 'Hoog water') return false;
+                let overdueBuoys = initialBuoys.filter(b => {
+                    if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
 
-                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
+                    if (b.status === 'Niet OK') return true;
 
                     if (!b.nextServiceDue) return false;
-                    const dueDate = new Date(b.nextServiceDue);
-                    return dueDate <= limitDate;
+                    return new Date(b.nextServiceDue) <= limitDate;
                 });
 
-                const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-                const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
+                const tier1 = overdueBuoys.filter(b => b.status === 'Niet OK');
+                const tier2 = overdueBuoys.filter(b => b.status !== 'Niet OK');
 
                 tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
                 tier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
 
-                // Only consider genuinely overdue or manually marked buoys, strictly prioritizing broken/maintenance ones first
-                hwDueSoon = [...tier1, ...tier2];
+                let sortedOverdue = [...tier1, ...tier2];
 
                 const assignedPerDay: Record<string, number> = {};
                 const dbPlans: any[] = [];
 
-                if (hwDueSoon.length > 0) {
+                if (sortedOverdue.length > 0) {
                     const todayDate = new Date();
                     const futureDate = new Date();
-                    futureDate.setDate(todayDate.getDate() + 14); // Fetch 14 days of tide to be safe
+                    futureDate.setDate(todayDate.getDate() + 14);
 
                     const fromParam = todayDate.toISOString().split('T')[0];
                     const toParam = futureDate.toISOString().split('T')[0];
@@ -71,21 +67,23 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                         { name: "Driegoten", astroHW_id: "04113411010", lat: 51.0925568254825, lng: 4.17099518412599 }
                     ];
 
-                    const buoysByStation: Record<string, typeof hwDueSoon> = {};
+                    const buoysByStation: Record<string, any[]> = {};
 
-                    for (const b of hwDueSoon) {
-                        let nearestStation = TIDE_STATIONS[0];
-                        const lat = b.location?.lat || b.metadata?.location?.lat;
-                        const lng = b.location?.lng || b.metadata?.location?.lng;
-                        if (lat && lng) {
-                            nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
-                                const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
-                                const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
-                                return currDist < prevDist ? curr : prev;
-                            });
+                    for (const b of sortedOverdue) {
+                        if (b.tideRestriction === 'Hoog water') {
+                            let nearestStation = TIDE_STATIONS[0];
+                            const lat = b.location?.lat || b.metadata?.location?.lat;
+                            const lng = b.location?.lng || b.metadata?.location?.lng;
+                            if (lat && lng) {
+                                nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
+                                    const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
+                                    const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
+                                    return currDist < prevDist ? curr : prev;
+                                });
+                            }
+                            if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
+                            buoysByStation[nearestStation.astroHW_id].push(b);
                         }
-                        if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
-                        buoysByStation[nearestStation.astroHW_id].push(b);
                     }
 
                     const now = new Date();
@@ -123,79 +121,57 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
 
                     await Promise.all(fetchPromises);
 
-                    for (const b of hwDueSoon) {
-                        const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some(buoy => buoy.id === b.id));
-                        if (!stationId) continue;
+                    let cursorDate = new Date();
+                    if (cursorDate.getHours() >= 16) {
+                        cursorDate.setDate(cursorDate.getDate() + 1);
+                    }
 
-                        const windows = stationTimelines[stationId] || [];
-                        const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
+                    for (const b of sortedOverdue) {
+                        if (b.tideRestriction === 'Hoog water') {
+                            const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some((buoy: any) => buoy.id === b.id));
+                            if (!stationId) continue;
 
-                        for (const win of windows) {
-                            if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+                            const windows = stationTimelines[stationId] || [];
+                            const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
 
-                            if (assignedPerDay[win.date] < 2) {
-                                dbPlans.push({
-                                    buoy: b,
-                                    planned_date: win.date,
-                                    notes: `Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
-                                    virtual_time: win.time
-                                });
-                                assignedPerDay[win.date]++;
-                                break;
+                            for (const win of windows) {
+                                if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+
+                                if (assignedPerDay[win.date] < 2) {
+                                    dbPlans.push({
+                                        buoy: b,
+                                        planned_date: win.date,
+                                        notes: `Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
+                                        virtual_time: win.time
+                                    });
+                                    assignedPerDay[win.date]++;
+                                    break;
+                                }
+                            }
+                        } else {
+                            // Non-tide buoy tracking
+                            for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+                                const checkDate = new Date(cursorDate);
+                                checkDate.setDate(checkDate.getDate() + dayOffset);
+
+                                const dOfWeek = checkDate.getDay();
+                                if (dOfWeek === 0 || dOfWeek === 6) continue;
+
+                                const dateStr = checkDate.toISOString().split('T')[0];
+                                if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
+
+                                if (assignedPerDay[dateStr] < 2) {
+                                    dbPlans.push({
+                                        buoy: b,
+                                        planned_date: dateStr,
+                                        notes: '',
+                                        virtual_time: null
+                                    });
+                                    assignedPerDay[dateStr]++;
+                                    break;
+                                }
                             }
                         }
-                    }
-                }
-
-                // --- NON-TIDE BUOYS ---
-                let nonTideOverdue = initialBuoys.filter(b => {
-                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                    if (b.tideRestriction === 'Hoog water') return false;
-
-                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
-
-                    if (!b.nextServiceDue) return false;
-                    return new Date(b.nextServiceDue) <= limitDate;
-                });
-
-                const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-                const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
-
-                ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
-                ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
-
-                // Only consider genuinely overdue or manually marked buoys, prioritizing broken ones
-                nonTideOverdue = [...ntTier1, ...ntTier2];
-
-                let ntIndex = 0;
-                let cursorDate = new Date();
-
-                if (cursorDate.getHours() >= 16) {
-                    cursorDate.setDate(cursorDate.getDate() + 1);
-                }
-
-                for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
-                    if (ntIndex >= nonTideOverdue.length) break;
-
-                    const checkDate = new Date(cursorDate);
-                    checkDate.setDate(checkDate.getDate() + dayOffset);
-
-                    const dOfWeek = checkDate.getDay();
-                    if (dOfWeek === 0 || dOfWeek === 6) continue;
-
-                    const dateStr = checkDate.toISOString().split('T')[0];
-                    if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
-
-                    while (assignedPerDay[dateStr] < 2 && ntIndex < nonTideOverdue.length) {
-                        const b = nonTideOverdue[ntIndex];
-                        dbPlans.push({
-                            buoy: b,
-                            planned_date: dateStr,
-                            notes: `Regulier onderhoud (Geen vloed nodig).`,
-                            virtual_time: null
-                        });
-                        assignedPerDay[dateStr]++;
-                        ntIndex++;
                     }
                 }
 

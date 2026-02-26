@@ -91,41 +91,37 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
             const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
 
-            let hwDueSoon = buoys.filter(b => {
-                if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                if (b.tideRestriction !== 'Hoog water') return false;
-                if (!b.nextServiceDue && b.status !== 'Niet OK' && b.status !== 'Maintenance') return false;
+            let overdueBuoys = buoys.filter(b => {
+                if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
                 if (plannedBuoyIds.has(b.id)) return false;
 
-                if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
+                if (b.status === 'Niet OK') return true;
 
-                const dueDate = new Date(b.nextServiceDue || 0);
-                return dueDate <= limitDate;
+                if (!b.nextServiceDue) return false;
+                return new Date(b.nextServiceDue) <= limitDate;
             });
 
             // 1. Delineate strictly OVERDUE buoys into two tiers
-            const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-            const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
+            const tier1 = overdueBuoys.filter(b => b.status === 'Niet OK');
+            const tier2 = overdueBuoys.filter(b => b.status !== 'Niet OK');
 
             // 2. Sort both tiers chronologically (most urgent first)
             tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
             tier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
 
-            // 3. Only feed strictly overdue buoys into the automated planner, prioritizing direct issues (Niet OK) over date-based overdue buoys
-            hwDueSoon = [...tier1, ...tier2];
+            // 3. One unified list of all urgent buoys
+            const sortedOverdue = [...tier1, ...tier2];
 
-            // To track globally how many buoys we planned per day across all stations
             const assignedPerDay: Record<string, number> = {};
 
-            if (hwDueSoon.length > 0) {
-                // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
+            if (sortedOverdue.length > 0) {
                 const todayDate = new Date();
                 const futureDate = new Date();
                 futureDate.setDate(todayDate.getDate() + 14);
 
                 const fromParam = todayDate.toISOString().split('T')[0];
                 const toParam = futureDate.toISOString().split('T')[0];
-                // Determine the nearest station for each buoy
+
                 const TIDE_STATIONS = [
                     { name: "Prosperpolder", astroHW_id: "04112717010", lat: 51.3483272650923, lng: 4.23793225487478 },
                     { name: "Kallo", astroHW_id: "04113436010", lat: 51.2679979571716, lng: 4.29852383884503 },
@@ -136,143 +132,117 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     { name: "Driegoten", astroHW_id: "04113411010", lat: 51.0925568254825, lng: 4.17099518412599 }
                 ];
 
-                const buoysByStation: Record<string, typeof hwDueSoon> = {};
+                const buoysByStation: Record<string, any[]> = {};
 
-                for (const b of hwDueSoon) {
-                    let nearestStation = TIDE_STATIONS[0];
-                    const lat = b.location?.lat || b.metadata?.location?.lat;
-                    const lng = b.location?.lng || b.metadata?.location?.lng;
-                    if (lat && lng) {
-                        nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
-                            const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
-                            const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
-                            return currDist < prevDist ? curr : prev;
-                        });
+                // Only fetch tide data for buoys that actually need it
+                for (const b of sortedOverdue) {
+                    if (b.tideRestriction === 'Hoog water') {
+                        let nearestStation = TIDE_STATIONS[0];
+                        const lat = b.location?.lat || b.metadata?.location?.lat;
+                        const lng = b.location?.lng || b.metadata?.location?.lng;
+                        if (lat && lng) {
+                            nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
+                                const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
+                                const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
+                                return currDist < prevDist ? curr : prev;
+                            });
+                        }
+                        if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
+                        buoysByStation[nearestStation.astroHW_id].push(b);
                     }
-                    if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
-                    buoysByStation[nearestStation.astroHW_id].push(b);
                 }
 
                 const now = new Date();
-
-                // 1. Fetch all required station timelines in parallel
                 const stationTimelines: Record<string, any[]> = {};
                 const fetchPromises = Object.keys(buoysByStation).map(async (stationId) => {
-                    const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
-                    if (tideRes.ok) {
-                        const tideData = await tideRes.json();
-                        const measurements = tideData[0]?.data || [];
-                        const validWindows: any[] = [];
+                    try {
+                        const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
+                        if (tideRes.ok) {
+                            const tideData = await tideRes.json();
+                            const measurements = tideData[0]?.data || [];
+                            const validWindows: any[] = [];
 
-                        for (const [timestampStr, level] of measurements) {
-                            const dateObj = new Date(timestampStr);
-                            if (dateObj < now) continue;
+                            for (const [timestampStr, level] of measurements) {
+                                const dateObj = new Date(timestampStr);
+                                if (dateObj < now) continue;
 
-                            const hour = dateObj.getHours();
-                            const min = dateObj.getMinutes();
-                            const dayOfWeek = dateObj.getDay();
+                                const hour = dateObj.getHours();
+                                const min = dateObj.getMinutes();
+                                const dayOfWeek = dateObj.getDay();
 
-                            if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
-                                validWindows.push({
-                                    date: dateObj.toISOString().split('T')[0],
-                                    time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
-                                    level: level
-                                });
+                                if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
+                                    validWindows.push({
+                                        date: dateObj.toISOString().split('T')[0],
+                                        time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                        level: level
+                                    });
+                                }
                             }
+                            stationTimelines[stationId] = validWindows;
                         }
-                        stationTimelines[stationId] = validWindows;
+                    } catch (e) {
+                        console.error(`Tide fetch failed for station ${stationId}`);
                     }
                 });
 
                 await Promise.all(fetchPromises);
 
-                // 2. Process buoys strictly in order of urgency
-                for (const b of hwDueSoon) {
-                    // Find which station this buoy belongs to
-                    const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some(buoy => buoy.id === b.id));
-                    if (!stationId) continue;
+                let cursorDate = new Date();
+                if (cursorDate.getHours() >= 16) {
+                    cursorDate.setDate(cursorDate.getDate() + 1);
+                }
 
-                    const windows = stationTimelines[stationId] || [];
-                    const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
+                // Process all buoys in order of absolute urgency
+                for (const b of sortedOverdue) {
+                    if (b.tideRestriction === 'Hoog water') {
+                        const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some((buoy: any) => buoy.id === b.id));
+                        if (!stationId) continue;
 
-                    // Find the earliest valid window for this specific buoy where the day hasn't reached the 2-buoy global limit
-                    for (const win of windows) {
-                        if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+                        const windows = stationTimelines[stationId] || [];
+                        const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
 
-                        if (assignedPerDay[win.date] < 2) {
-                            dbPlans.push({
-                                id: `magic-${b.id}`,
-                                buoy_id: b.id,
-                                planned_date: win.date,
-                                notes: `VIRTUELE PLANNING: Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
-                                is_virtual: true,
-                                virtual_time: win.time
-                            });
+                        for (const win of windows) {
+                            if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
 
-                            assignedPerDay[win.date]++;
-                            break; // Stop looking for slots for this buoy, move to the next buoy
+                            if (assignedPerDay[win.date] < 2) {
+                                dbPlans.push({
+                                    id: `magic-${b.id}`,
+                                    buoy_id: b.id,
+                                    planned_date: win.date,
+                                    notes: `VIRTUELE PLANNING: Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
+                                    is_virtual: true,
+                                    virtual_time: win.time
+                                });
+                                assignedPerDay[win.date]++;
+                                break;
+                            }
+                        }
+                    } else {
+                        // Regular buoy planning (no tide needed), just grab next available working day slot
+                        for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+                            const checkDate = new Date(cursorDate);
+                            checkDate.setDate(checkDate.getDate() + dayOffset);
+
+                            const dOfWeek = checkDate.getDay();
+                            if (dOfWeek === 0 || dOfWeek === 6) continue;
+
+                            const dateStr = checkDate.toISOString().split('T')[0];
+                            if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
+
+                            if (assignedPerDay[dateStr] < 2) {
+                                dbPlans.push({
+                                    id: `magic-nontide-${b.id}`,
+                                    buoy_id: b.id,
+                                    planned_date: dateStr,
+                                    notes: '',
+                                    is_virtual: true,
+                                    virtual_time: null
+                                });
+                                assignedPerDay[dateStr]++;
+                                break;
+                            }
                         }
                     }
-                }
-            }
-
-            // 3. INTEGRATE NON-TIDE OVERDUE BUOYS INTO THE 10-DAY TIMELINE
-            // Since they don't depend on the tide, we just slot the most urgent ones into the remaining 2-per-day capacity slots
-            let nonTideOverdue = buoys
-                .filter(b => {
-                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
-                    if (b.tideRestriction === 'Hoog water') return false;
-                    if (plannedBuoyIds.has(b.id)) return false;
-
-                    if (b.status === 'Niet OK' || b.status === 'Maintenance') return true;
-
-                    if (!b.nextServiceDue) return false;
-                    return new Date(b.nextServiceDue) <= limitDate;
-                });
-
-            // Apply the same two-tier priority for non-tide buoys
-            const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
-            const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && new Date(b.nextServiceDue) < new Date(todayStrStrict));
-
-            ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
-            ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
-
-            nonTideOverdue = [...ntTier1, ...ntTier2];
-
-            let ntIndex = 0;
-            const now = new Date();
-            let cursorDate = new Date();
-
-            // Advance cursor if it's past 16:00
-            if (cursorDate.getHours() >= 16) {
-                cursorDate.setDate(cursorDate.getDate() + 1);
-            }
-
-            // Look ahead for 14 days to find enough valid workdays to place them
-            for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
-                if (ntIndex >= nonTideOverdue.length) break;
-
-                const checkDate = new Date(cursorDate);
-                checkDate.setDate(checkDate.getDate() + dayOffset);
-
-                const dOfWeek = checkDate.getDay();
-                if (dOfWeek === 0 || dOfWeek === 6) continue; // Skip weekends
-
-                const dateStr = checkDate.toISOString().split('T')[0];
-                if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
-
-                while (assignedPerDay[dateStr] < 2 && ntIndex < nonTideOverdue.length) {
-                    const b = nonTideOverdue[ntIndex];
-                    dbPlans.push({
-                        id: `magic-nontide-${b.id}`,
-                        buoy_id: b.id,
-                        planned_date: dateStr,
-                        notes: `VIRTUELE PLANNING: Regulier onderhoud (Geen vloed nodig).`,
-                        is_virtual: true,
-                        virtual_time: null
-                    });
-                    assignedPerDay[dateStr]++;
-                    ntIndex++;
                 }
             }
 
