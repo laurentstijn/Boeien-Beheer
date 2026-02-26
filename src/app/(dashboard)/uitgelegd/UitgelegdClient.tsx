@@ -41,7 +41,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const [plannedEntries, setPlannedEntries] = useState<any[]>([]);
     const [retrievingBuoy, setRetrievingBuoy] = useState<DeployedBuoy | null>(null);
     const [tideAdviceMap, setTideAdviceMap] = useState<Record<string, any>>({});
-    const [isAutoPlanning, setIsAutoPlanning] = useState(false);
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
@@ -130,36 +129,77 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
         });
     }, [todayPlannedBuoys]);
 
-    const refreshPlanning = () => {
-        fetch('/api/maintenance/planning')
-            .then(res => res.json())
-            .then(data => setPlannedEntries(Array.isArray(data) ? data : []))
-            .catch(err => console.error("Failed to load planning", err));
+    const refreshPlanning = async () => {
+        try {
+            const res = await fetch('/api/maintenance/planning');
+            let dbPlans = await res.json();
+            if (!Array.isArray(dbPlans)) dbPlans = [];
+
+            // AUTOMATIC MAGIC PLANNING INJECTION
+            // Filter buoys that urgently need 'Hoog water' maintenance but aren't planned
+            const todayStr = new Date().toISOString().split('T')[0];
+            const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
+            const hwOverdue = buoys.filter(b =>
+                b.status !== 'Hidden' &&
+                b.status !== 'Maintenance' &&
+                b.tideRestriction === 'Hoog water' &&
+                b.nextServiceDue &&
+                b.nextServiceDue < todayStr &&
+                !plannedBuoyIds.has(b.id)
+            );
+
+            if (hwOverdue.length > 0) {
+                // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
+                const tideRes = await fetch("https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=04112717010&format=json&period=P14D");
+                if (tideRes.ok) {
+                    const tideData = await tideRes.json();
+                    const measurements = tideData[0]?.data || [];
+
+                    const validWindows: any[] = [];
+                    for (const [timestampStr, level] of measurements) {
+                        const dateObj = new Date(timestampStr);
+                        const hour = dateObj.getHours();
+                        const min = dateObj.getMinutes();
+                        if (hour >= 11 && hour <= 16 && level >= 4.0) {
+                            validWindows.push({
+                                date: dateObj.toISOString().split('T')[0],
+                                time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                level: level
+                            });
+                        }
+                    }
+
+                    if (validWindows.length > 0) {
+                        let bIndex = 0;
+                        for (const win of validWindows) {
+                            if (bIndex >= hwOverdue.length) break;
+                            // max 2 per day
+                            for (let i = 0; i < 2; i++) {
+                                if (bIndex >= hwOverdue.length) break;
+                                const b = hwOverdue[bIndex];
+                                dbPlans.push({
+                                    id: `magic-${b.id}`,
+                                    buoy_id: b.id,
+                                    planned_date: win.date,
+                                    notes: `VIRTUELE PLANNING: Automatisch voorgesteld wegens Hoog water om ${win.time} (${win.level.toFixed(2)}m).`,
+                                    is_virtual: true
+                                });
+                                bIndex++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            setPlannedEntries(dbPlans);
+        } catch (err) {
+            console.error("Failed to load planning", err);
+        }
     };
 
     useEffect(() => {
         refreshPlanning();
     }, [buoys]); // Re-fetch when buoys are updated
-
-    const handleAutoPlan = async () => {
-        setIsAutoPlanning(true);
-        try {
-            const res = await fetch('/api/maintenance/auto-plan', { method: 'POST' });
-            if (res.ok) {
-                const data = await res.json();
-                alert(data.message || 'Auto-planning uitgevoerd.');
-                refreshPlanning(); // refetch planned entries
-            } else {
-                const errData = await res.json();
-                alert('Fout bij auto-planning: ' + (errData.error || 'Onbekende fout'));
-            }
-        } catch (error) {
-            console.error("Auto Plan error:", error);
-            alert("Er liep iets mis bij het auto-plannen.");
-        } finally {
-            setIsAutoPlanning(false);
-        }
-    };
 
     const tableRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
@@ -327,15 +367,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                     <Ship className="w-5 h-5 text-app-text-secondary" />
                                     <h2 className="text-lg font-bold text-app-text-primary">Uitgelegd ({filteredAndSortedBuoys.length})</h2>
                                 </div>
-                                <button
-                                    onClick={handleAutoPlan}
-                                    disabled={isAutoPlanning}
-                                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 disabled:opacity-50 shadow-md shadow-purple-500/20"
-                                    title="Plan automatisch Hoog-water boeien in op bruikbare dagen in de komende 14 dagen."
-                                >
-                                    <Wand2 className={clsx("w-3.5 h-3.5", { "animate-spin": isAutoPlanning })} />
-                                    {isAutoPlanning ? "Plannen..." : "Slim Plannen (Hoog Water)"}
-                                </button>
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center flex-1 justify-end">
@@ -522,12 +553,29 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                                 </span>
                                                             )}
                                                             {/* Planned Status */}
-                                                            {plannedEntries.some(p => p.buoy_id === buoy.id) && (
-                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white shadow-sm flex items-center gap-1 animate-pulse">
-                                                                    <Calendar className="w-2.5 h-2.5" />
-                                                                    GEPLAND: {new Date(plannedEntries.find(p => p.buoy_id === buoy.id).planned_date).toLocaleDateString('nl-BE')}
-                                                                </span>
-                                                            )}
+                                                            {(() => {
+                                                                const activePlan = plannedEntries.find(p => p.buoy_id === buoy.id);
+                                                                if (activePlan) {
+                                                                    return (
+                                                                        <div className={clsx("flex flex-col gap-1 mt-1", activePlan.is_virtual ? "opacity-90 grayscale-[0.2]" : "")}>
+                                                                            <span className={clsx(
+                                                                                "text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm flex items-center w-max gap-1",
+                                                                                activePlan.is_virtual ? "bg-purple-500 animate-none" : "bg-blue-600 animate-pulse"
+                                                                            )}>
+                                                                                <Calendar className="w-2.5 h-2.5" />
+                                                                                {activePlan.is_virtual ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(activePlan.planned_date).toLocaleDateString('nl-BE')}
+                                                                                {activePlan.is_virtual && <Wand2 className="w-2.5 h-2.5 ml-0.5" />}
+                                                                            </span>
+                                                                            {activePlan.notes && activePlan.is_virtual && (
+                                                                                <span className="text-[9px] text-purple-600 italic line-clamp-2 max-w-[200px] leading-tight">
+                                                                                    {activePlan.notes}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
 
                                                             {/* Smart Suggestion: Vandaag Gepland (Top 2 oldest overdue) */}
                                                             {todayPlannedBuoys.some(b => b.id === buoy.id) && (
