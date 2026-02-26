@@ -197,6 +197,30 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 }
             }
 
+            // FALLBACK FOR OVERDUE NON-TIDE BUOYS
+            // Since they don't depend on the tide, we just slot the most urgent ones in for 'today'
+            const nonTideOverdue = buoys
+                .filter(b => {
+                    if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
+                    if (b.tideRestriction === 'Hoog water') return false;
+                    if (!b.nextServiceDue) return false;
+                    if (plannedBuoyIds.has(b.id)) return false;
+                    return b.nextServiceDue < todayStr;
+                })
+                .sort((a, b) => (a.nextServiceDue! < b.nextServiceDue! ? -1 : 1))
+                .slice(0, 2);
+
+            for (const b of nonTideOverdue) {
+                dbPlans.push({
+                    id: `magic-nontide-${b.id}`,
+                    buoy_id: b.id,
+                    planned_date: todayStr,
+                    notes: `VIRTUELE PLANNING: Urgente suggestie (Geen vloed nodig).`,
+                    is_virtual: true,
+                    virtual_time: null
+                });
+            }
+
             setPlannedEntries(dbPlans);
         } catch (err) {
             console.error("Failed to load planning", err);
