@@ -199,6 +199,10 @@ export default function BuoyMapInternal({
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 />
+                <TileLayer
+                    attribution='&copy; <a href="http://www.openseamap.org">OpenSeaMap</a> contributors'
+                    url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
+                />
 
                 <MapController selectedBuoyId={selectedBuoyId || null} buoys={buoys} activeZone={activeZone} />
                 <ResetZoomControl buoys={buoys} activeZone={activeZone} />
