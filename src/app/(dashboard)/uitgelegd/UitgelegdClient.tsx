@@ -101,17 +101,15 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 return dueDate <= limitDate;
             });
 
-            // 1. Separate strictly OVERDUE buoys from UPCOMING buoys
-            const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue! < todayStrStrict);
-            const upcoming = hwDueSoon.filter(b => b.nextServiceDue! >= todayStrStrict);
+            // 1. Delineate strictly OVERDUE buoys
+            const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
 
-            // 2. Sort both arrays chronologically (most urgent first)
-            strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
-            upcoming.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
+            // 2. Sort chronologically (most urgent first)
+            strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
 
-            // 3. First feed all overdue buoys into the pipeline. If there are massive amounts, capping them ensures we don't fetch/process infinite data.
-            // But we prioritize them aggressively before appending the upcoming ones.
-            hwDueSoon = [...strictlyOverdue, ...upcoming];
+            // 3. Only feed strictly overdue buoys into the automated planner. 
+            // The user explicitly requested to NOT pre-plan buoys that are technically not yet overdue.
+            hwDueSoon = [...strictlyOverdue];
 
             // To track globally how many buoys we planned per day across all stations
             const assignedPerDay: Record<string, number> = {};
@@ -226,12 +224,11 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     return b.nextServiceDue <= limitDate.toISOString().split('T')[0];
                 });
 
-            // Split and prioritize strictly overdue first, then upcoming
-            const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue! < todayStrStrict);
-            const ntUpcoming = nonTideOverdue.filter(b => b.nextServiceDue! >= todayStrStrict);
-            ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
-            ntUpcoming.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
-            nonTideOverdue = [...ntStrictlyOverdue, ...ntUpcoming];
+            // Only auto-plan genuinely overdue buoys. Ignore upcoming to keep the calendar uncluttered.
+            const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
+
+            ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+            nonTideOverdue = [...ntStrictlyOverdue];
 
             let ntIndex = 0;
             const now = new Date();

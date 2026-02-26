@@ -13,54 +13,202 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
     const [daysLookahead, setDaysLookahead] = useState(defaultDays);
     const [tidePredictions, setTidePredictions] = useState<any>(null);
 
+    const [plannedEntries, setPlannedEntries] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
-        const fetchPredictions = async () => {
+        const generatePlanning = async () => {
+            if (!initialBuoys || initialBuoys.length === 0) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                // Fetch up to end of lookahead + a few extra days for safety
-                const res = await fetch(`/api/tide/predictions?days=${daysLookahead + 5}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setTidePredictions(data);
+                const todayStrStrict = new Date().toISOString().split('T')[0];
+                const limitDate = new Date();
+                limitDate.setDate(limitDate.getDate() + daysLookahead);
+                limitDate.setHours(23, 59, 59, 999);
+
+                // --- TIDE BUOYS ---
+                let hwDueSoon = initialBuoys.filter(b => {
+                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
+                    // For the report, we only care about buoys that actually need service (including 'OK' but technically due soon)
+                    if (b.status === 'OK' && !b.nextServiceDue) return false;
+
+                    // The report is only for maintenance, so if it's 'OK' it MUST be due soon to appear
+                    if (b.status === 'OK' && b.nextServiceDue && new Date(b.nextServiceDue) > limitDate) return false;
+
+                    return b.tideRestriction === 'Hoog water';
+                });
+
+                const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
+                strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+
+                // Only consider genuinely overdue or manually marked buoys
+                hwDueSoon = [...strictlyOverdue];
+
+                const assignedPerDay: Record<string, number> = {};
+                const dbPlans: any[] = [];
+
+                if (hwDueSoon.length > 0) {
+                    const todayDate = new Date();
+                    const futureDate = new Date();
+                    futureDate.setDate(todayDate.getDate() + 14); // Fetch 14 days of tide to be safe
+
+                    const fromParam = todayDate.toISOString().split('T')[0];
+                    const toParam = futureDate.toISOString().split('T')[0];
+
+                    const TIDE_STATIONS = [
+                        { name: "Prosperpolder", astroHW_id: "04112717010", lat: 51.3483272650923, lng: 4.23793225487478 },
+                        { name: "Kallo", astroHW_id: "04113436010", lat: 51.2679979571716, lng: 4.29852383884503 },
+                        { name: "Antwerpen", astroHW_id: "04112707010", lat: 51.227468146743, lng: 4.39991370684368 },
+                        { name: "Rupelmonde", astroHW_id: "04112712010", lat: 51.1359646843388, lng: 4.32230864155543 },
+                        { name: "Boom", astroHW_id: "04113401010", lat: 51.0868580992141, lng: 4.35368553727916 },
+                        { name: "Temse", astroHW_id: "04113491010", lat: 51.1228087597494, lng: 4.21867338754706 },
+                        { name: "Driegoten", astroHW_id: "04113411010", lat: 51.0925568254825, lng: 4.17099518412599 }
+                    ];
+
+                    const buoysByStation: Record<string, typeof hwDueSoon> = {};
+
+                    for (const b of hwDueSoon) {
+                        let nearestStation = TIDE_STATIONS[0];
+                        const lat = b.location?.lat || b.metadata?.location?.lat;
+                        const lng = b.location?.lng || b.metadata?.location?.lng;
+                        if (lat && lng) {
+                            nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
+                                const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
+                                const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
+                                return currDist < prevDist ? curr : prev;
+                            });
+                        }
+                        if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
+                        buoysByStation[nearestStation.astroHW_id].push(b);
+                    }
+
+                    const now = new Date();
+                    const stationTimelines: Record<string, any[]> = {};
+                    const fetchPromises = Object.keys(buoysByStation).map(async (stationId) => {
+                        try {
+                            const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
+                            if (tideRes.ok) {
+                                const tideData = await tideRes.json();
+                                const measurements = tideData[0]?.data || [];
+                                const validWindows: any[] = [];
+
+                                for (const [timestampStr, level] of measurements) {
+                                    const dateObj = new Date(timestampStr);
+                                    if (dateObj < now) continue;
+
+                                    const hour = dateObj.getHours();
+                                    const min = dateObj.getMinutes();
+                                    const dayOfWeek = dateObj.getDay();
+
+                                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
+                                        validWindows.push({
+                                            date: dateObj.toISOString().split('T')[0],
+                                            time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                            level: level
+                                        });
+                                    }
+                                }
+                                stationTimelines[stationId] = validWindows;
+                            }
+                        } catch (e) {
+                            console.error(`Tide fetch failed for station ${stationId}`);
+                        }
+                    });
+
+                    await Promise.all(fetchPromises);
+
+                    for (const b of hwDueSoon) {
+                        const stationId = Object.keys(buoysByStation).find(id => buoysByStation[id].some(buoy => buoy.id === b.id));
+                        if (!stationId) continue;
+
+                        const windows = stationTimelines[stationId] || [];
+                        const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
+
+                        for (const win of windows) {
+                            if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+
+                            if (assignedPerDay[win.date] < 2) {
+                                dbPlans.push({
+                                    buoy: b,
+                                    planned_date: win.date,
+                                    notes: `Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
+                                    virtual_time: win.time
+                                });
+                                assignedPerDay[win.date]++;
+                                break;
+                            }
+                        }
+                    }
                 }
-            } catch (e) {
-                console.error("Failed to load tide predictions");
+
+                // --- NON-TIDE BUOYS ---
+                let nonTideOverdue = initialBuoys.filter(b => {
+                    if (b.status === 'Hidden' || b.status === 'Lost') return false;
+                    if (b.tideRestriction === 'Hoog water') return false; // Handled above
+
+                    if (b.status === 'OK' && !b.nextServiceDue) return false;
+                    if (b.status === 'OK' && b.nextServiceDue && new Date(b.nextServiceDue) > limitDate) return false;
+
+                    return true;
+                });
+
+                const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
+                ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+
+                // Only consider genuinely overdue or manually marked buoys
+                nonTideOverdue = [...ntStrictlyOverdue];
+
+                let ntIndex = 0;
+                let cursorDate = new Date();
+
+                if (cursorDate.getHours() >= 16) {
+                    cursorDate.setDate(cursorDate.getDate() + 1);
+                }
+
+                for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+                    if (ntIndex >= nonTideOverdue.length) break;
+
+                    const checkDate = new Date(cursorDate);
+                    checkDate.setDate(checkDate.getDate() + dayOffset);
+
+                    const dOfWeek = checkDate.getDay();
+                    if (dOfWeek === 0 || dOfWeek === 6) continue;
+
+                    const dateStr = checkDate.toISOString().split('T')[0];
+                    if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
+
+                    while (assignedPerDay[dateStr] < 2 && ntIndex < nonTideOverdue.length) {
+                        const b = nonTideOverdue[ntIndex];
+                        dbPlans.push({
+                            buoy: b,
+                            planned_date: dateStr,
+                            notes: `Regulier onderhoud (Geen vloed nodig).`,
+                            virtual_time: null
+                        });
+                        assignedPerDay[dateStr]++;
+                        ntIndex++;
+                    }
+                }
+
+                // Sort the final printed list chronically so the report reads like a day-to-day calendar
+                dbPlans.sort((a, b) => {
+                    const timeA = new Date(a.planned_date).getTime();
+                    const timeB = new Date(b.planned_date).getTime();
+                    return timeA - timeB;
+                });
+
+                setPlannedEntries(dbPlans);
+            } catch (err) {
+                console.error("Failed to generate report planning", err);
+            } finally {
+                setIsLoading(false);
             }
         };
-        fetchPredictions();
-    }, [daysLookahead]);
 
-    const getNearestStation = (lat: number, lng: number) => {
-        if (!tidePredictions?.stations || tidePredictions.stations.length === 0) return null;
-        return tidePredictions.stations.reduce((prev: any, curr: any) => {
-            const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
-            const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
-            return currDist < prevDist ? curr : prev;
-        });
-    };
-
-    const buoysToService = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const limitDate = new Date(today);
-        limitDate.setDate(limitDate.getDate() + daysLookahead);
-
-        return initialBuoys
-            .filter(b => b.status !== "Hidden" && b.status !== "Lost")
-            .filter(b => {
-                if (b.status === "Maintenance" || b.status === "Niet OK") return true; // Always include if they strictly need attention
-
-                if (!b.nextServiceDue) return false;
-                const dueDate = new Date(b.nextServiceDue);
-
-                return dueDate <= limitDate;
-            })
-            .sort((a, b) => {
-                const dateA = a.nextServiceDue ? new Date(a.nextServiceDue).getTime() : 0;
-                const dateB = b.nextServiceDue ? new Date(b.nextServiceDue).getTime() : 0;
-                return dateA - dateB;
-            })
-            .slice(0, daysLookahead * 2);
+        generatePlanning();
     }, [initialBuoys, daysLookahead]);
 
     return (
@@ -96,7 +244,7 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                     </div>
                     <div className="flex items-center gap-2 text-app-text-secondary">
                         <Ship className="w-5 h-5 print:text-black" />
-                        <span className="font-bold print:text-black">{buoysToService.length} Boeien</span>
+                        <span className="font-bold print:text-black">{plannedEntries.length} Inplanningen</span>
                     </div>
                 </div>
 
@@ -104,130 +252,69 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                     <table className="w-full text-left text-sm print:text-xs">
                         <thead className="bg-app-bg text-app-text-secondary border-b border-app-border print:bg-transparent print:text-black">
                             <tr>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Datum Inplanning</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Boei Naam</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Type & Kleur</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Locatie</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Vervaldatum</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Getij</th>
-                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Status</th>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Oorspronkelijke Vervaldatum</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-app-border print:divide-gray-300">
-                            {buoysToService.length > 0 ? buoysToService.map((buoy) => {
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-app-text-secondary print:text-black print:py-4">
+                                        Planning berekenen...
+                                    </td>
+                                </tr>
+                            ) : plannedEntries.length > 0 ? plannedEntries.map((plan, idx) => {
+                                const buoy = plan.buoy;
                                 const isOverdue = buoy.nextServiceDue && new Date(buoy.nextServiceDue) < new Date();
-                                const statusLabel = buoy.status === 'Maintenance' ? 'Aandacht Nodig' :
-                                    isOverdue ? 'Te Laat' : 'Gepland';
 
                                 return (
-                                    <tr key={buoy.id} className="hover:bg-app-surface-hover print:hover:bg-transparent">
-                                        <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2">
+                                    <tr key={`${buoy.id}-${idx}`} className="hover:bg-app-surface-hover print:hover:bg-transparent">
+                                        <td className="px-6 py-4 print:px-2 print:py-2">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-bold text-blue-800 print:text-black text-base">{new Date(plan.planned_date).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
+                                                {plan.virtual_time && (
+                                                    <span className="inline-flex items-center gap-1 font-bold bg-blue-100 print:bg-transparent text-blue-800 print:text-black px-2 py-0.5 rounded text-xs w-max border border-blue-200 print:border-none print:p-0">
+                                                        <Droplets className="w-3 h-3 text-blue-600 print:text-black" />
+                                                        {plan.virtual_time}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] text-gray-500 print:text-gray-700 italic max-w-[200px] leading-tight mt-1">{plan.notes}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top pt-5">
                                             {buoy.name}
                                         </td>
-                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full border border-gray-300 shadow-sm" style={{ backgroundColor: buoy.buoyType?.color === 'rood' ? '#dc2626' : buoy.buoyType?.color === 'groen' ? '#16a34a' : buoy.buoyType?.color === 'zwart' ? '#000' : buoy.buoyType?.color === 'wit' ? '#fff' : '#facc15' }} />
-                                            {buoy.buoyType?.name}
+                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top pt-5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: buoy.buoyType?.color === 'rood' ? '#dc2626' : buoy.buoyType?.color === 'groen' ? '#16a34a' : buoy.buoyType?.color === 'zwart' ? '#000' : buoy.buoyType?.color === 'wit' ? '#fff' : '#facc15' }} />
+                                                <span>{buoy.buoyType?.name}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2">
+                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top pt-5">
                                             {typeof buoy.location === 'object' && buoy.location && buoy.location.lat ? `${buoy.location.lat.toFixed(5)}, ${buoy.location.lng.toFixed(5)}` : '-'}
                                         </td>
-                                        <td className="px-6 py-4 print:px-2 print:py-2">
+                                        <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
                                             {buoy.nextServiceDue ? (
                                                 <span className={clsx(
                                                     "font-bold",
                                                     isOverdue ? "text-red-600 print:text-red-700" : "text-app-text-primary print:text-black"
                                                 )}>
                                                     {new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE')}
+                                                    {isOverdue && <AlertTriangle className="w-3 h-3 inline ml-1 text-red-600 print:text-red-700" />}
                                                 </span>
                                             ) : (
-                                                <span className="text-orange-500 font-bold print:text-orange-700">Geen Datum</span>
+                                                <span className="text-orange-500 font-bold print:text-orange-700">Aandacht / Geen Datum</span>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 text-xs">
-                                            <div className="font-semibold">{buoy.tideRestriction}</div>
-                                            {(() => {
-                                                if (!buoy.tideRestriction || buoy.tideRestriction === 'Geen' || !tidePredictions) return null;
-                                                const hasLoc = buoy.location && buoy.location.lat;
-                                                const station = hasLoc ? getNearestStation(buoy.location.lat, buoy.location.lng) : null;
-
-                                                if (!station || !tidePredictions.predictions?.[station.name]) return null;
-
-                                                let validMatches: any[] = [];
-
-                                                const preds = tidePredictions.predictions[station.name];
-                                                if (buoy.tideRestriction === 'Hoog water') {
-                                                    const hwList = preds.highWaters || [];
-                                                    const todayStr = new Date().toISOString().split('T')[0];
-                                                    const now = new Date();
-
-                                                    // Filter for matches that are today or later, value >= 4.0, hour between 11-16, and not weekend
-                                                    validMatches = hwList.filter((h: any) => {
-                                                        if (h.date < todayStr) return false;
-                                                        if (h.level < 4.0) return false;
-
-                                                        // Ensure we don't suggest times that have already passed today
-                                                        const parts = h.time.split(':');
-                                                        const hNum = parseInt(parts[0], 10);
-                                                        const mNum = parseInt(parts[1] || '0', 10);
-
-                                                        const exactTimeObj = new Date(h.date);
-                                                        exactTimeObj.setHours(hNum, mNum, 0, 0);
-                                                        if (exactTimeObj < now) return false;
-
-                                                        const dObj = new Date(h.date);
-                                                        const dayOfWeek = dObj.getDay();
-                                                        if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Skip Sunday/Saturday
-
-                                                        return hNum >= 11 && hNum <= 16;
-                                                    }).slice(0, 3); // Take top 3 upcoming slots
-                                                } else if (buoy.tideRestriction === 'Laag water') {
-                                                    // Simple fallback for laag water if needed
-                                                    const targetDateStr = (!buoy.nextServiceDue || isOverdue) ? new Date().toISOString().split('T')[0] : new Date(buoy.nextServiceDue).toISOString().split('T')[0];
-                                                    validMatches = (preds.lowWaters || []).filter((l: any) => l.date === targetDateStr);
-                                                }
-
-                                                if (validMatches.length === 0) return null;
-
-                                                return (
-                                                    <div className="mt-1.5 flex flex-col gap-1 text-[10px] bg-purple-50 p-2 rounded border border-purple-200 print:bg-transparent print:border-none print:p-0 print:mt-0 text-purple-800 print:text-gray-600">
-                                                        <div className="flex items-center gap-1 font-bold">
-                                                            <Droplets className="w-3 h-3 text-purple-600 print:text-gray-600" />
-                                                            Kansberekening ({station.name}):
-                                                        </div>
-                                                        <div className="flex flex-col gap-0.5 pl-4">
-                                                            {validMatches.map((match: any, idx: number) => {
-                                                                const dObj = new Date(match.date);
-                                                                const dStr = `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}`;
-                                                                return (
-                                                                    <div key={idx} className="flex items-center gap-1.5">
-                                                                        <span className="font-semibold">{dStr}</span>
-                                                                        <span className="text-purple-600/50 print:hidden">•</span>
-                                                                        <span className="font-bold bg-white print:bg-transparent px-1 rounded shadow-sm print:shadow-none border border-purple-100 print:border-none">{match.time}</span>
-                                                                        <span className="text-[9px] text-purple-700/70 italic">({match.level.toFixed(2)}m)</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4 print:px-2 print:py-2">
-                                            <span className={clsx(
-                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border print:bg-transparent",
-                                                statusLabel === 'Aandacht Nodig' ? "bg-orange-100 text-orange-700 border-orange-200 print:border-orange-500 print:text-orange-800" :
-                                                    statusLabel === 'Te Laat' ? "bg-red-600 text-white border-red-700 shadow-sm print:border-red-600 print:text-red-700" :
-                                                        "bg-blue-100 text-blue-700 border-blue-200 print:border-gray-400 print:text-black"
-                                            )}>
-                                                {statusLabel === 'Te Laat' || statusLabel === 'Aandacht Nodig' ? <AlertTriangle className={clsx("w-3 h-3", statusLabel === 'Te Laat' ? "text-white print:text-red-700" : "text-orange-600 print:text-orange-800")} /> : <Calendar className="w-3 h-3" />}
-                                                {statusLabel}
-                                            </span>
                                         </td>
                                     </tr>
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-app-text-secondary print:text-black print:py-4 italic">
-                                        Geen boeien gevonden die onderhoud nodig hebben in deze periode.
+                                    <td colSpan={5} className="px-6 py-8 text-center text-app-text-secondary print:text-black print:py-4 italic">
+                                        Geen planning gegenereerd. Alles is up-to-date!
                                     </td>
                                 </tr>
                             )}
