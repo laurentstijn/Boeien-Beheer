@@ -238,6 +238,7 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider w-16 print:px-2">#</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Gepland</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Boei Naam</th>
+                                <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Locatie</th>
                                 <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Vervaldatum</th>
                             </tr>
                         </thead>
@@ -275,12 +276,16 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top pt-5">
-                                            {buoy.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top pt-5">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: buoy.buoyType?.color === 'rood' ? '#dc2626' : buoy.buoyType?.color === 'groen' ? '#16a34a' : buoy.buoyType?.color === 'zwart' ? '#000' : buoy.buoyType?.color === 'wit' ? '#fff' : '#facc15' }} />
-                                                <span>{buoy.buoyType?.name}</span>
+                                                <div
+                                                    style={{
+                                                        backgroundColor: buoy.buoyType?.color === 'rood' ? '#dc2626' : buoy.buoyType?.color === 'groen' ? '#16a34a' : buoy.buoyType?.color === 'zwart' ? '#000' : buoy.buoyType?.color === 'wit' ? '#fff' : '#facc15',
+                                                        WebkitPrintColorAdjust: 'exact',
+                                                        printColorAdjust: 'exact'
+                                                    }}
+                                                    className="w-3 h-3 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+                                                />
+                                                <span>{buoy.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top pt-5">
