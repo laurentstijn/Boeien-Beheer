@@ -293,251 +293,251 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
             {asset?.category && <input type="hidden" name="category" value={asset.category} />}
 
             <div>
-                {mode === 'create' ? (
-                    <div className="space-y-4">
-                        {formCategory === 'Boei' ? (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Model</label>
+                <div className="space-y-4">
+                    {formCategory === 'Boei' ? (
+                        <>
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Model</label>
+                                <select
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                                    value={selectedModel}
+                                    onChange={(e) => {
+                                        setSelectedModel(e.target.value);
+                                        setSelectedType('');
+                                        setSelectedColor('');
+                                        setSelectedRawColor('');
+                                        setSelectedAutoName('');
+                                        setSelectedItemId('');
+                                        setIsCustomType(e.target.value === 'custom');
+                                    }}
+                                >
+                                    <option value="">Selecteer model...</option>
+                                    {Object.keys(groupedItems)
+                                        .sort((a, b) => a.localeCompare(b))
+                                        .map((model) => (
+                                            <option key={model} value={model}>{model}</option>
+                                        ))}
+                                    <option value="custom" className="text-blue-500 font-bold">+ Nieuw artikel type...</option>
+                                </select>
+                            </div>
+
+                            {!isCustomType && selectedModel && (
+                                <div className="animate-in slide-in-from-top-2 duration-200">
+                                    <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Categorie</label>
                                     <select
                                         className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-                                        value={selectedModel}
+                                        value={selectedType}
                                         onChange={(e) => {
-                                            setSelectedModel(e.target.value);
-                                            setSelectedType('');
+                                            setSelectedType(e.target.value);
                                             setSelectedColor('');
                                             setSelectedRawColor('');
                                             setSelectedAutoName('');
                                             setSelectedItemId('');
-                                            setIsCustomType(e.target.value === 'custom');
                                         }}
                                     >
-                                        <option value="">Selecteer model...</option>
-                                        {Object.keys(groupedItems)
-                                            .sort((a, b) => a.localeCompare(b))
-                                            .map((model) => (
-                                                <option key={model} value={model}>{model}</option>
+                                        <option value="">Selecteer...</option>
+                                        {Object.keys(groupedItems[selectedModel] || {})
+                                            .sort((a, b) => {
+                                                // Ensure a logical order: Boei -> Reserve -> Structuur
+                                                const order: Record<string, number> = { 'Volledige Boei': 1, 'Reserve Drijflichaam': 2, 'Structuur': 3 };
+                                                return (order[a] || 99) - (order[b] || 99);
+                                            })
+                                            .map((type) => (
+                                                <option key={type} value={type}>{type}</option>
                                             ))}
-                                        <option value="custom" className="text-blue-500 font-bold">+ Nieuw artikel type...</option>
                                     </select>
                                 </div>
+                            )}
 
-                                {!isCustomType && selectedModel && (
-                                    <div className="animate-in slide-in-from-top-2 duration-200">
-                                        <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Categorie</label>
-                                        <select
-                                            className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-                                            value={selectedType}
-                                            onChange={(e) => {
-                                                setSelectedType(e.target.value);
-                                                setSelectedColor('');
-                                                setSelectedRawColor('');
-                                                setSelectedAutoName('');
-                                                setSelectedItemId('');
-                                            }}
-                                        >
-                                            <option value="">Selecteer...</option>
-                                            {Object.keys(groupedItems[selectedModel] || {})
-                                                .sort((a, b) => {
-                                                    // Ensure a logical order: Boei -> Reserve -> Structuur
-                                                    const order: Record<string, number> = { 'Volledige Boei': 1, 'Reserve Drijflichaam': 2, 'Structuur': 3 };
-                                                    return (order[a] || 99) - (order[b] || 99);
-                                                })
-                                                .map((type) => (
-                                                    <option key={type} value={type}>{type}</option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                )}
+                            {!isCustomType && selectedModel && selectedType && (
+                                (() => {
+                                    let variants = (groupedItems[selectedModel]?.[selectedType] || []) as any[];
 
-                                {!isCustomType && selectedModel && selectedType && (
-                                    (() => {
-                                        let variants = (groupedItems[selectedModel]?.[selectedType] || []) as any[];
+                                    // Augment with missing standard colors for Boei and Reserve
+                                    if (selectedType === 'Volledige Boei' || selectedType === 'Reserve Drijflichaam') {
+                                        const existingRawColors = new Set(variants.map(v => v.rawColor));
+                                        const augmentedVariants = [...variants];
 
-                                        // Augment with missing standard colors for Boei and Reserve
-                                        if (selectedType === 'Volledige Boei' || selectedType === 'Reserve Drijflichaam') {
-                                            const existingRawColors = new Set(variants.map(v => v.rawColor));
-                                            const augmentedVariants = [...variants];
+                                        const allowedReserveColors = ['Groen', 'Rood', 'Geel', 'Zwart', 'Blauw'];
+                                        const colorsToAdd = selectedType === 'Reserve Drijflichaam'
+                                            ? ALL_COLORS.filter(c => allowedReserveColors.includes(c.rawColor))
+                                            : ALL_COLORS;
 
-                                            const allowedReserveColors = ['Groen', 'Rood', 'Geel', 'Zwart', 'Blauw'];
-                                            const colorsToAdd = selectedType === 'Reserve Drijflichaam'
-                                                ? ALL_COLORS.filter(c => allowedReserveColors.includes(c.rawColor))
-                                                : ALL_COLORS;
-
-                                            colorsToAdd.forEach(c => {
-                                                if (!existingRawColors.has(c.rawColor)) {
-                                                    augmentedVariants.push({
-                                                        id: 'custom',
-                                                        color: c.label,
-                                                        rawColor: c.rawColor,
-                                                        autoName: `${selectedModel}${selectedType === 'Reserve Drijflichaam' ? ' Reserve Drijflichaam' : ''} ${c.rawColor}`
-                                                    });
-                                                }
-                                            });
-                                            variants = augmentedVariants;
-                                        }
-
-                                        const isSingleVariant = variants.length === 1;
-
-                                        if (isSingleVariant && selectedItemId) {
-                                            return <input type="hidden" name="itemId" value={selectedItemId} required />;
-                                        }
-
-                                        return (
-                                            <div className="animate-in slide-in-from-top-2 duration-200" ref={dropdownRef}>
-                                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kleur / Variant</label>
-                                                <input type="hidden" name="itemId" value={selectedItemId || 'custom'} required />
-                                                {(selectedItemId === 'custom' || !selectedItemId) && selectedAutoName && (
-                                                    <input type="hidden" name="customItemName" value={selectedAutoName} />
-                                                )}
-                                                <div className="relative">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
-                                                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            {selectedColor ? (
-                                                                <>
-                                                                    <div className="w-6 h-6 flex-shrink-0">
-                                                                        <BuoyIcon color={selectedRawColor} size="md" />
-                                                                    </div>
-                                                                    <span>{selectedColor}</span>
-                                                                </>
-                                                            ) : (
-                                                                <span className="text-gray-500">Selecteer kleur...</span>
-                                                            )}
-                                                        </div>
-                                                        <ChevronDown className={clsx("w-4 h-4 text-app-text-secondary transition-transform", isColorDropdownOpen && "rotate-180")} />
-                                                    </button>
-
-                                                    {isColorDropdownOpen && (
-                                                        <div className="absolute z-10 w-full mt-1 bg-app-surface border border-app-border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                                            {variants.map((item, idx) => (
-                                                                <button
-                                                                    key={item.id === 'custom' ? `custom-${idx}` : item.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setSelectedItemId(item.id);
-                                                                        setSelectedColor(item.color);
-                                                                        setSelectedRawColor(item.rawColor);
-                                                                        if (item.autoName) setSelectedAutoName(item.autoName);
-                                                                        setIsColorDropdownOpen(false);
-                                                                    }}
-                                                                    className="w-full text-left px-4 py-3 hover:bg-app-surface-hover flex items-center gap-3 transition-colors border-b border-app-border/50 last:border-0"
-                                                                >
-                                                                    <div className="w-6 h-6 flex-shrink-0">
-                                                                        <BuoyIcon color={item.rawColor} size="md" />
-                                                                    </div>
-                                                                    <span className="font-medium text-app-text-primary">{item.color}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()
-                                )}
-
-                                {isCustomType && (
-                                    <div className="mt-3">
-                                        <input
-                                            type="text"
-                                            name="customItemName"
-                                            placeholder="Bijv. JET 3000 Blauw"
-                                            required
-                                            className="w-full bg-app-bg border border-blue-500/50 rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all"
-                                        />
-                                        <div className="mt-3 bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl">
-                                            <label className="block text-xs font-semibold text-blue-600 mb-1 ml-1">Minimum Voorraad (Optioneel)</label>
-                                            <input
-                                                type="number"
-                                                name="min_stock_level"
-                                                placeholder="0"
-                                                min="0"
-                                                className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-all font-mono"
-                                            />
-                                        </div>
-                                    </div>
-
-                                )}
-                            </>
-                        ) : (
-                            // Non-Boei categories: Simple dropdown or custom name
-                            <div>
-                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">
-                                    {formCategory === 'Ketting' ? 'Ketting Type' :
-                                        formCategory === 'Steen' ? 'Steen Type' :
-                                            formCategory === 'Topteken' ? 'Topteken Type' : 'Type'}
-                                </label>
-                                <select
-                                    name="itemId"
-                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-                                    value={selectedItemId || (isCustomType ? 'custom' : '')}
-                                    onChange={(e) => {
-                                        if (e.target.value === 'custom') {
-                                            setIsCustomType(true);
-                                            setSelectedItemId('');
-                                        } else {
-                                            setIsCustomType(false);
-                                            setSelectedItemId(e.target.value);
-                                        }
-                                    }}
-                                >
-                                    <option value="">Selecteer bestaand type...</option>
-                                    {itemTypes.map((item) => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.name}
-                                        </option>
-                                    ))}
-                                    <option value="custom" className="text-blue-500 font-bold">+ Nieuw type...</option>
-                                </select>
-
-                                {!isCustomType && selectedItemId && (
-                                    <input type="hidden" name="itemId" value={selectedItemId} required />
-                                )}
-
-                                {isCustomType && (
-                                    <div className="mt-3">
-                                        <input
-                                            type="text"
-                                            name="customItemName"
-                                            placeholder={
-                                                formCategory === 'Ketting' ? 'Bijv. Ketting Oranje 20m' :
-                                                    formCategory === 'Steen' ? 'Bijv. 5T Vierkant' :
-                                                        formCategory === 'Topteken' ? 'Bijv. Spits (Oranje)' : 'Naam...'
+                                        colorsToAdd.forEach(c => {
+                                            if (!existingRawColors.has(c.rawColor)) {
+                                                augmentedVariants.push({
+                                                    id: 'custom',
+                                                    color: c.label,
+                                                    rawColor: c.rawColor,
+                                                    autoName: `${selectedModel}${selectedType === 'Reserve Drijflichaam' ? ' Reserve Drijflichaam' : ''} ${c.rawColor}`
+                                                });
                                             }
-                                            required
-                                            className="w-full bg-app-bg border border-blue-500/50 rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all"
-                                        />
-                                        <div className="mt-3 bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl">
-                                            <label className="block text-xs font-semibold text-blue-600 mb-1 ml-1">Minimum Voorraad (Optioneel)</label>
-                                            <input
-                                                type="number"
-                                                name="min_stock_level"
-                                                placeholder="0"
-                                                min="0"
-                                                className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-all font-mono"
-                                            />
-                                        </div>
-                                    </div>
+                                        });
+                                        variants = augmentedVariants;
+                                    }
 
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div>
-                        <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Asset</label>
-                        <input
-                            type="text"
-                            value={asset?.name || ''}
-                            disabled
-                            className="w-full bg-app-bg border border-app-border/50 rounded-xl px-4 py-2.5 text-app-text-secondary cursor-not-allowed italic"
-                        />
-                    </div>
-                )}
+                                    const isSingleVariant = variants.length === 1;
+
+                                    if (isSingleVariant && selectedItemId) {
+                                        return <input type="hidden" name="itemId" value={selectedItemId} required />;
+                                    }
+
+                                    return (
+                                        <div className="animate-in slide-in-from-top-2 duration-200" ref={dropdownRef}>
+                                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kleur / Variant</label>
+                                            <input type="hidden" name="itemId" value={selectedItemId || 'custom'} required />
+                                            {(selectedItemId === 'custom' || !selectedItemId) && selectedAutoName && (
+                                                <input type="hidden" name="customItemName" value={selectedAutoName} />
+                                            )}
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
+                                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer flex items-center justify-between"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {selectedColor ? (
+                                                            <>
+                                                                <div className="w-6 h-6 flex-shrink-0">
+                                                                    <BuoyIcon color={selectedRawColor} size="md" />
+                                                                </div>
+                                                                <span>{selectedColor}</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-gray-500">Selecteer kleur...</span>
+                                                        )}
+                                                    </div>
+                                                    <ChevronDown className={clsx("w-4 h-4 text-app-text-secondary transition-transform", isColorDropdownOpen && "rotate-180")} />
+                                                </button>
+
+                                                {isColorDropdownOpen && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-app-surface border border-app-border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                                                        {variants.map((item, idx) => (
+                                                            <button
+                                                                key={item.id === 'custom' ? `custom-${idx}` : item.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedItemId(item.id);
+                                                                    setSelectedColor(item.color);
+                                                                    setSelectedRawColor(item.rawColor);
+                                                                    if (item.autoName) setSelectedAutoName(item.autoName);
+                                                                    setIsColorDropdownOpen(false);
+                                                                }}
+                                                                className="w-full text-left px-4 py-3 hover:bg-app-surface-hover flex items-center gap-3 transition-colors border-b border-app-border/50 last:border-0"
+                                                            >
+                                                                <div className="w-6 h-6 flex-shrink-0">
+                                                                    <BuoyIcon color={item.rawColor} size="md" />
+                                                                </div>
+                                                                <span className="font-medium text-app-text-primary">{item.color}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            )}
+
+                            {isCustomType && (
+                                <div className="mt-3">
+                                    <input
+                                        type="text"
+                                        name="customItemName"
+                                        placeholder="Bijv. JET 3000"
+                                        required
+                                        className="w-full bg-app-bg border border-blue-500/50 rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all"
+                                    />
+                                    {formCategory === 'Boei' && (
+                                        <div className="mt-3">
+                                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kleur (Optioneel)</label>
+                                            <select
+                                                name="customItemColor"
+                                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                                            >
+                                                <option value="">Selecteer kleur...</option>
+                                                {ALL_COLORS.map(c => <option key={c.rawColor} value={c.rawColor}>{c.label}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className="mt-3 bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl">
+                                        <label className="block text-xs font-semibold text-blue-600 mb-1 ml-1">Minimum Voorraad (Optioneel)</label>
+                                        <input
+                                            type="number"
+                                            name="min_stock_level"
+                                            placeholder="0"
+                                            min="0"
+                                            className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-all font-mono"
+                                        />
+                                    </div>
+                                </div>
+
+                            )}
+                        </>
+                    ) : (
+                        // Non-Boei categories: Simple dropdown or custom name
+                        <div>
+                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">
+                                {formCategory === 'Ketting' ? 'Ketting Type' :
+                                    formCategory === 'Steen' ? 'Steen Type' :
+                                        formCategory === 'Topteken' ? 'Topteken Type' : 'Type'}
+                            </label>
+                            <select
+                                name="itemId"
+                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                                value={selectedItemId || (isCustomType ? 'custom' : '')}
+                                onChange={(e) => {
+                                    if (e.target.value === 'custom') {
+                                        setIsCustomType(true);
+                                        setSelectedItemId('');
+                                    } else {
+                                        setIsCustomType(false);
+                                        setSelectedItemId(e.target.value);
+                                    }
+                                }}
+                            >
+                                <option value="">Selecteer bestaand type...</option>
+                                {itemTypes.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.name}
+                                    </option>
+                                ))}
+                                <option value="custom" className="text-blue-500 font-bold">+ Nieuw type...</option>
+                            </select>
+
+                            {!isCustomType && selectedItemId && (
+                                <input type="hidden" name="itemId" value={selectedItemId} required />
+                            )}
+
+                            {isCustomType && (
+                                <div className="mt-3">
+                                    <input
+                                        type="text"
+                                        name="customItemName"
+                                        placeholder={
+                                            formCategory === 'Ketting' ? 'Bijv. Ketting Oranje 20m' :
+                                                formCategory === 'Steen' ? 'Bijv. 5T Vierkant' :
+                                                    formCategory === 'Topteken' ? 'Bijv. Spits (Oranje)' : 'Naam...'
+                                        }
+                                        required
+                                        className="w-full bg-app-bg border border-blue-500/50 rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all"
+                                    />
+                                    <div className="mt-3 bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl">
+                                        <label className="block text-xs font-semibold text-blue-600 mb-1 ml-1">Minimum Voorraad (Optioneel)</label>
+                                        <input
+                                            type="number"
+                                            name="min_stock_level"
+                                            placeholder="0"
+                                            min="0"
+                                            className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none focus:border-blue-500 transition-all font-mono"
+                                        />
+                                    </div>
+                                </div>
+
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Status Dropdown */}
@@ -558,238 +558,250 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
             </div>
 
             {/* Deployed Buoy Selection */}
-            {status === 'deployed' && (
-                <div className="animate-in slide-in-from-top-2 duration-200" ref={buoyDropdownRef}>
-                    <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Koppel aan Boei</label>
-                    <input type="hidden" name="deployment_buoy_id" value={selectedBuoyId} />
+            {
+                status === 'deployed' && (
+                    <div className="animate-in slide-in-from-top-2 duration-200" ref={buoyDropdownRef}>
+                        <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Koppel aan Boei</label>
+                        <input type="hidden" name="deployment_buoy_id" value={selectedBuoyId} />
 
-                    <SearchableSelect
-                        value={selectedBuoyId || ''}
-                        onChange={setSelectedBuoyId}
-                        options={[
-                            { value: '', label: 'Selecteer een boei...' },
-                            ...buoys.map(buoy => ({
-                                value: buoy.id,
-                                label: buoy.name,
-                                icon: <div className={clsx("w-3.5 h-3.5 rounded-full shadow-sm", getColorPreview(buoy.buoyType?.color || 'yellow').className)} />
-                            }))
-                        ]}
-                        placeholder="Selecteer een boei..."
-                    />
-                    <p className="text-xs text-app-text-secondary mt-1 ml-1">
-                        Selecteer de boei waar dit onderdeel momenteel op is uitgelegd.
-                    </p>
-                </div>
-            )}
+                        <SearchableSelect
+                            value={selectedBuoyId || ''}
+                            onChange={setSelectedBuoyId}
+                            options={[
+                                { value: '', label: 'Selecteer een boei...' },
+                                ...buoys.map(buoy => ({
+                                    value: buoy.id,
+                                    label: buoy.name,
+                                    icon: <div className={clsx("w-3.5 h-3.5 rounded-full shadow-sm", getColorPreview(buoy.buoyType?.color || 'yellow').className)} />
+                                }))
+                            ]}
+                            placeholder="Selecteer een boei..."
+                        />
+                        <p className="text-xs text-app-text-secondary mt-1 ml-1">
+                            Selecteer de boei waar dit onderdeel momenteel op is uitgelegd.
+                        </p>
+                    </div>
+                )
+            }
 
             {/* Location Dropdown - Hide when deployed */}
-            {status !== 'deployed' && (
-                <div>
-                    <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Locatie</label>
-                    <select
-                        name="location"
-                        defaultValue={asset?.location || 'Magazijn'}
-                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-                    >
-                        <option value="Magazijn">Magazijn</option>
-                        <option value="Kallo">Kallo</option>
-                        <option value="Aan boord">Aan boord</option>
-                    </select>
-                </div>
-            )}
+            {
+                status !== 'deployed' && (
+                    <div>
+                        <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Locatie</label>
+                        <select
+                            name="location"
+                            defaultValue={asset?.location || 'Magazijn'}
+                            className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                        >
+                            <option value="Magazijn">Magazijn</option>
+                            <option value="Kallo">Kallo</option>
+                            <option value="Aan boord">Aan boord</option>
+                        </select>
+                    </div>
+                )
+            }
 
-            {formCategory === 'Lamp' && (
-                <div className="space-y-4 animate-in slide-in-from-top-2 border-t border-app-border pt-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kleur</label>
-                            <select
-                                name="lamp_color"
-                                defaultValue={asset?.metadata?.color || asset?.metadata?.lamp_color || 'Geel'}
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
-                            >
-                                <option value="Geel">Geel</option>
-                                <option value="Rood">Rood</option>
-                                <option value="Groen">Groen</option>
-                                <option value="Wit">Wit</option>
-                            </select>
+            {
+                formCategory === 'Lamp' && (
+                    <div className="space-y-4 animate-in slide-in-from-top-2 border-t border-app-border pt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kleur</label>
+                                <select
+                                    name="lamp_color"
+                                    defaultValue={asset?.metadata?.color || asset?.metadata?.lamp_color || 'Geel'}
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
+                                >
+                                    <option value="Geel">Geel</option>
+                                    <option value="Rood">Rood</option>
+                                    <option value="Groen">Groen</option>
+                                    <option value="Wit">Wit</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Serienummer</label>
+                                <input
+                                    type="text"
+                                    name="article_number"
+                                    defaultValue={asset?.metadata?.serialNumber || asset?.metadata?.serial_number || asset?.metadata?.article_number || ''}
+                                    placeholder="Bijv. 1560144833"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary font-mono focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Serienummer</label>
-                            <input
-                                type="text"
-                                name="article_number"
-                                defaultValue={asset?.metadata?.serialNumber || asset?.metadata?.serial_number || asset?.metadata?.article_number || ''}
-                                placeholder="Bijv. 1560144833"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary font-mono focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
+
+                        <div className="grid grid-cols-1 gap-3">
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Merk / Fabrikant</label>
+                                <input
+                                    type="text"
+                                    name="brand"
+                                    defaultValue={asset?.metadata?.brand || asset?.metadata?.manufacturer || ''}
+                                    placeholder="Bijv. Sabik"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                            <div className="flex items-center space-x-2 bg-app-bg/50 p-3 rounded-xl border border-app-border">
+                                <input
+                                    type="checkbox"
+                                    id="ble"
+                                    name="ble"
+                                    defaultChecked={asset?.metadata?.ble}
+                                    className="w-4 h-4 rounded border-app-border text-blue-600 focus:ring-blue-500"
+                                />
+                                <label htmlFor="ble" className="text-sm font-medium text-app-text-primary cursor-pointer">
+                                    Heeft Bluetooth (BLE)?
+                                </label>
+                            </div>
+                            <div className="flex items-center space-x-2 bg-app-bg/50 p-3 rounded-xl border border-app-border">
+                                <input
+                                    type="checkbox"
+                                    id="gps"
+                                    name="gps"
+                                    defaultChecked={asset?.metadata?.gps}
+                                    className="w-4 h-4 rounded border-app-border text-blue-600 focus:ring-blue-500"
+                                />
+                                <label htmlFor="gps" className="text-sm font-medium text-app-text-primary cursor-pointer">
+                                    Heeft GPS?
+                                </label>
+                            </div>
                         </div>
                     </div>
+                )
+            }
 
-                    <div className="grid grid-cols-1 gap-3">
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Merk / Fabrikant</label>
-                            <input
-                                type="text"
-                                name="brand"
-                                defaultValue={asset?.metadata?.brand || asset?.metadata?.manufacturer || ''}
-                                placeholder="Bijv. Sabik"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
+            {
+                (formCategory === 'Ketting') && (
+                    <div className="space-y-3 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Lengte</label>
+                                <input
+                                    type="text"
+                                    name="length"
+                                    defaultValue={asset?.metadata?.length || asset?.item?.specs?.length || ''}
+                                    placeholder="Bijv. 15m"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Dikte/Diameter</label>
+                                <input
+                                    type="text"
+                                    name="thickness"
+                                    defaultValue={asset?.metadata?.thickness || asset?.item?.specs?.thickness || ''}
+                                    placeholder="Bijv. 25mm"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                        <div className="flex items-center space-x-2 bg-app-bg/50 p-3 rounded-xl border border-app-border">
+                        <div className="flex items-center gap-2 bg-app-bg px-4 py-2.5 rounded-xl border border-app-border">
                             <input
                                 type="checkbox"
-                                id="ble"
-                                name="ble"
-                                defaultChecked={asset?.metadata?.ble}
-                                className="w-4 h-4 rounded border-app-border text-blue-600 focus:ring-blue-500"
+                                id="swivel"
+                                name="swivel"
+                                defaultChecked={asset?.metadata?.swivel === 'Ja'}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-app-surface cursor-pointer"
                             />
-                            <label htmlFor="ble" className="text-sm font-medium text-app-text-primary cursor-pointer">
-                                Heeft Bluetooth (BLE)?
+                            <label htmlFor="swivel" className="text-sm font-medium text-app-text-primary cursor-pointer">
+                                Heeft draainagel?
                             </label>
                         </div>
-                        <div className="flex items-center space-x-2 bg-app-bg/50 p-3 rounded-xl border border-app-border">
+                    </div>
+                )
+            }
+
+            {
+                (formCategory === 'Steen') && (
+                    <div className="space-y-3 animate-in slide-in-from-top-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Gewicht</label>
+                                <input
+                                    type="text"
+                                    name="weight"
+                                    list="weight-options"
+                                    defaultValue={asset?.metadata?.weight || asset?.item?.specs?.weight || itemTypes.find(t => t.id === selectedItemId)?.specs?.weight || ''}
+                                    placeholder="Bijv. 1000kg"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                                <datalist id="weight-options">
+                                    {uniqueWeights.map((w) => (
+                                        <option key={w} value={w} />
+                                    ))}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Vorm</label>
+                                <input
+                                    type="text"
+                                    name="shape"
+                                    list="shape-options"
+                                    defaultValue={asset?.metadata?.shape || asset?.item?.specs?.shape || itemTypes.find(t => t.id === selectedItemId)?.specs?.shape || ''}
+                                    placeholder="Bijv. Vierkant"
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                />
+                                <datalist id="shape-options">
+                                    {uniqueShapes.map((s) => (
+                                        <option key={s} value={s} />
+                                    ))}
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-app-bg px-4 py-2.5 rounded-xl border border-app-border">
                             <input
                                 type="checkbox"
-                                id="gps"
-                                name="gps"
-                                defaultChecked={asset?.metadata?.gps}
-                                className="w-4 h-4 rounded border-app-border text-blue-600 focus:ring-blue-500"
+                                id="hasChain"
+                                name="hasChain"
+                                checked={hasChain}
+                                onChange={(e) => setHasChain(e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-app-surface cursor-pointer"
                             />
-                            <label htmlFor="gps" className="text-sm font-medium text-app-text-primary cursor-pointer">
-                                Heeft GPS?
+                            <label htmlFor="hasChain" className="text-sm font-medium text-app-text-primary cursor-pointer">
+                                Heeft ketting gekoppeld?
                             </label>
                         </div>
-                    </div>
-                </div>
-            )}
 
-            {(formCategory === 'Ketting') && (
-                <div className="space-y-3 animate-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Lengte</label>
-                            <input
-                                type="text"
-                                name="length"
-                                defaultValue={asset?.metadata?.length || asset?.item?.specs?.length || ''}
-                                placeholder="Bijv. 15m"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Dikte/Diameter</label>
-                            <input
-                                type="text"
-                                name="thickness"
-                                defaultValue={asset?.metadata?.thickness || asset?.item?.specs?.thickness || ''}
-                                placeholder="Bijv. 25mm"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
-                        </div>
+                        {hasChain && (
+                            <div className="animate-in slide-in-from-top-2">
+                                <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Ketting</label>
+                                <select
+                                    name="chain_id"
+                                    defaultValue={asset?.metadata?.chain_id || ''}
+                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
+                                >
+                                    <option value="">Selecteer een ketting...</option>
+                                    {availableChains.map((c: any) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name} {c.metadata?.length && `(${c.metadata.length})`} {c.metadata?.article_number && `[${c.metadata.article_number}]`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex items-center gap-2 bg-app-bg px-4 py-2.5 rounded-xl border border-app-border">
+                )
+            }
+
+            {
+                formCategory !== 'Lamp' && (
+                    <div>
+                        <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Artikel Nummer</label>
                         <input
-                            type="checkbox"
-                            id="swivel"
-                            name="swivel"
-                            defaultChecked={asset?.metadata?.swivel === 'Ja'}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-app-surface cursor-pointer"
+                            type="text"
+                            name="article_number"
+                            defaultValue={asset?.metadata?.article_number || ''}
+                            placeholder="Bijv. ART-12345"
+                            className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary font-mono focus:outline-none focus:border-blue-500 transition-all"
                         />
-                        <label htmlFor="swivel" className="text-sm font-medium text-app-text-primary cursor-pointer">
-                            Heeft draainagel?
-                        </label>
                     </div>
-                </div>
-            )}
-
-            {(formCategory === 'Steen') && (
-                <div className="space-y-3 animate-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Gewicht</label>
-                            <input
-                                type="text"
-                                name="weight"
-                                list="weight-options"
-                                defaultValue={asset?.metadata?.weight || asset?.item?.specs?.weight || itemTypes.find(t => t.id === selectedItemId)?.specs?.weight || ''}
-                                placeholder="Bijv. 1000kg"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
-                            <datalist id="weight-options">
-                                {uniqueWeights.map((w) => (
-                                    <option key={w} value={w} />
-                                ))}
-                            </datalist>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Vorm</label>
-                            <input
-                                type="text"
-                                name="shape"
-                                list="shape-options"
-                                defaultValue={asset?.metadata?.shape || asset?.item?.specs?.shape || itemTypes.find(t => t.id === selectedItemId)?.specs?.shape || ''}
-                                placeholder="Bijv. Vierkant"
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            />
-                            <datalist id="shape-options">
-                                {uniqueShapes.map((s) => (
-                                    <option key={s} value={s} />
-                                ))}
-                            </datalist>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-app-bg px-4 py-2.5 rounded-xl border border-app-border">
-                        <input
-                            type="checkbox"
-                            id="hasChain"
-                            name="hasChain"
-                            checked={hasChain}
-                            onChange={(e) => setHasChain(e.target.checked)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-app-surface cursor-pointer"
-                        />
-                        <label htmlFor="hasChain" className="text-sm font-medium text-app-text-primary cursor-pointer">
-                            Heeft ketting gekoppeld?
-                        </label>
-                    </div>
-
-                    {hasChain && (
-                        <div className="animate-in slide-in-from-top-2">
-                            <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Kies Ketting</label>
-                            <select
-                                name="chain_id"
-                                defaultValue={asset?.metadata?.chain_id || ''}
-                                className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all text-sm"
-                            >
-                                <option value="">Selecteer een ketting...</option>
-                                {availableChains.map((c: any) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name} {c.metadata?.length && `(${c.metadata.length})`} {c.metadata?.article_number && `[${c.metadata.article_number}]`}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {formCategory !== 'Lamp' && (
-                <div>
-                    <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Artikel Nummer</label>
-                    <input
-                        type="text"
-                        name="article_number"
-                        defaultValue={asset?.metadata?.article_number || ''}
-                        placeholder="Bijv. ART-12345"
-                        className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary font-mono focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                </div>
-            )}
+                )
+            }
 
             <div>
                 <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Notities</label>
@@ -802,14 +814,16 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
                 />
             </div>
 
-            {state.message && (
-                <div className={clsx(
-                    "mt-4 p-3 rounded-xl text-center text-sm font-medium animate-in zoom-in-95 duration-200",
-                    state.success ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"
-                )}>
-                    {state.message}
-                </div>
-            )}
+            {
+                state.message && (
+                    <div className={clsx(
+                        "mt-4 p-3 rounded-xl text-center text-sm font-medium animate-in zoom-in-95 duration-200",
+                        state.success ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"
+                    )}>
+                        {state.message}
+                    </div>
+                )
+            }
 
             <div className="flex gap-3 pt-4 border-t border-app-border mt-6">
                 <button
@@ -826,7 +840,7 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
                     {mode === 'create' ? 'Aanmaken' : 'Opslaan'}
                 </button>
             </div>
-        </form>
+        </form >
     );
 }
 

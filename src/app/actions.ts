@@ -24,7 +24,8 @@ export async function setAdminZoneOverride(zone: string | null) {
 
 export async function createAsset(prevState: any, formData: FormData) {
     let itemId = formData.get('itemId') as string;
-    const customItemName = formData.get('customItemName') as string;
+    let customItemName = formData.get('customItemName') as string;
+    const customItemColor = formData.get('customItemColor') as string;
     const category = formData.get('category') as string;
     const status = formData.get('status') as string;
     const location = formData.get('location') as string;
@@ -42,6 +43,11 @@ export async function createAsset(prevState: any, formData: FormData) {
     // If custom item is selected, create new item type first
     if (itemId === 'custom' && customItemName) {
         try {
+            // Combine custom name with selected color if applicable
+            if (customItemColor && category === 'Boei') {
+                customItemName = `${customItemName.trim()} ${customItemColor}`;
+            }
+
             // 1. Check if item type already exists (by name only, since name is UNIQUE)
             // This handles the case where a user "re-creates" a type that is currently hidden (0 stock)
             // or if it was accidentally saved under a different category previously.
@@ -207,12 +213,18 @@ export async function updateAsset(prevState: any, formData: FormData) {
     const weight = formData.get('weight') as string;
     const shape = formData.get('shape') as string;
 
+    // Support changing tracking item
+    let itemId = formData.get('itemId') as string;
+    let customItemName = formData.get('customItemName') as string;
+    const customItemColor = formData.get('customItemColor') as string;
+    const formCategory = formData.get('category') as string;
+
     if (!id) return { message: 'Asset ID ontbreekt.' };
 
     try {
         // First fetch current to get metadata
         const { data: current, error: fetchError } = await supabaseAdmin.from('assets')
-            .select('status, deployment_id, metadata, items(category)')
+            .select('item_id, status, deployment_id, metadata, items(category)')
             .eq('id', id)
             .single();
 
@@ -245,15 +257,67 @@ export async function updateAsset(prevState: any, formData: FormData) {
             }
         }
 
+        // Handle possible itemId change (user changed variant or created custom flavor while editing)
+        let finalItemId = current.item_id;
+        let updateMetadata = currentMetadata;
+
+        if (itemId && itemId !== current.item_id) {
+            if (itemId === 'custom' && customItemName) {
+                if (customItemColor && formCategory === 'Boei') {
+                    customItemName = `${customItemName.trim()} ${customItemColor}`;
+                }
+
+                // Create (or find) new item
+                let { data: existingItem } = await supabaseAdmin.from('items')
+                    .select('id')
+                    .eq('name', customItemName)
+                    .eq('category', category)
+                    .maybeSingle();
+
+                if (existingItem) {
+                    finalItemId = existingItem.id;
+                } else {
+                    const min_stock_level = parseInt(formData.get('min_stock_level') as string) || 0;
+                    const { data: newItem, error: itemError } = await supabaseAdmin.from('items').insert({
+                        name: customItemName,
+                        category: category || 'Custom',
+                        stock_quantity: 0,
+                        min_stock_level: min_stock_level,
+                        specs: {}
+                    }).select().single();
+                    if (!itemError && newItem) finalItemId = newItem.id;
+                }
+            } else if (itemId !== 'custom') {
+                finalItemId = itemId;
+            }
+
+            // If item changed, let's also update metadata.model and color based on the new item
+            const { data: newItemData } = await supabaseAdmin.from('items').select('name').eq('id', finalItemId).maybeSingle();
+            if (newItemData) {
+                const colorRegex = /(Rood|Groen|Geel|Blauw\/Geel|Blauw|Zwart|Wit|Noord|Oost|Zuid|West)/i;
+                const reserveRegex = /(Drijflichaam|Reserve)/i;
+                const structuurRegex = /Structuur/i;
+                let newModelName = newItemData.name;
+                newModelName = newModelName.replace(colorRegex, '').replace(reserveRegex, '').replace(structuurRegex, '').replace(/\s+/g, ' ').trim();
+
+                updateMetadata.model = newModelName;
+                const newColor = newItemData.name.match(colorRegex)?.[0];
+                if (newColor) updateMetadata.color = newColor;
+            }
+        }
+
         // Main Update (updates global fields not handled by link/unlink)
+
         // Note: unlink functions update status/location, so main update might overwrite fields like notes
         // We run main update anyway to ensure all fields are synced.
         const { error } = await supabaseAdmin.from('assets').update({
             status,
+            item_id: finalItemId,
             location: isDeployed && deployment_buoy_id ? undefined : location, // Don't overwrite location if deploying to buoy (link function handles it)
             deployment_id: isDeployed && deployment_buoy_id ? deployment_buoy_id : (wasDeployed && !isDeployed ? null : current.deployment_id),
             metadata: {
-                ...currentMetadata,
+                ...updateMetadata,
+
                 notes,
                 article_number,
                 serial_number: article_number, // Mirror for table display
