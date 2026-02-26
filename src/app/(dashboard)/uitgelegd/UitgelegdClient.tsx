@@ -137,6 +137,10 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     buoysByStation[nearestStation.astroHW_id].push(b);
                 }
 
+                const now = new Date();
+                // To track globally how many buoys we planned per day across all stations
+                const assignedPerDay: Record<string, number> = {};
+
                 for (const [stationId, buoysForStation] of Object.entries(buoysByStation)) {
                     const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
 
@@ -147,11 +151,15 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                         for (const [timestampStr, level] of measurements) {
                             const dateObj = new Date(timestampStr);
+
+                            // 1. Must be in the future (ignore past tides for today)
+                            if (dateObj < now) continue;
+
                             const hour = dateObj.getHours();
                             const min = dateObj.getMinutes();
                             const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 6 is Saturday
 
-                            // Only allow weekdays (1-5), between 11-16h, and high water >= 4m
+                            // 2. Only allow weekdays (1-5), between 11-16h, and high water >= 4m
                             if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
                                 validWindows.push({
                                     date: dateObj.toISOString().split('T')[0],
@@ -165,9 +173,11 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                             let bIndex = 0;
                             for (const win of validWindows) {
                                 if (bIndex >= buoysForStation.length) break;
-                                // max 2 per day
-                                for (let i = 0; i < 2; i++) {
-                                    if (bIndex >= buoysForStation.length) break;
+
+                                // Ensure we don't exceed 2 globally for this specific day
+                                if (!assignedPerDay[win.date]) assignedPerDay[win.date] = 0;
+
+                                while (assignedPerDay[win.date] < 2 && bIndex < buoysForStation.length) {
                                     const b = buoysForStation[bIndex];
                                     const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
                                     dbPlans.push({
@@ -178,6 +188,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                         is_virtual: true,
                                         virtual_time: win.time
                                     });
+                                    assignedPerDay[win.date]++;
                                     bIndex++;
                                 }
                             }

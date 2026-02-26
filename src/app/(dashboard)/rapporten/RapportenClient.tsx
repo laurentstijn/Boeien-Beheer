@@ -157,13 +157,21 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                                 if (buoy.tideRestriction === 'Hoog water') {
                                                     const hwList = preds.highWaters || [];
                                                     const todayStr = new Date().toISOString().split('T')[0];
+                                                    const now = new Date();
 
                                                     // Filter for matches that are today or later, value >= 4.0, hour between 11-16, and not weekend
                                                     validMatches = hwList.filter((h: any) => {
                                                         if (h.date < todayStr) return false;
                                                         if (h.level < 4.0) return false;
+
+                                                        // Ensure we don't suggest times that have already passed today
                                                         const parts = h.time.split(':');
                                                         const hNum = parseInt(parts[0], 10);
+                                                        const mNum = parseInt(parts[1] || '0', 10);
+
+                                                        const exactTimeObj = new Date(h.date);
+                                                        exactTimeObj.setHours(hNum, mNum, 0, 0);
+                                                        if (exactTimeObj < now) return false;
 
                                                         const dObj = new Date(h.date);
                                                         const dayOfWeek = dObj.getDay();
