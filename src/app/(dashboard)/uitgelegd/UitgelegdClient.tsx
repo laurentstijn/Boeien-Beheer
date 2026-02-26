@@ -101,15 +101,16 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 return dueDate <= limitDate;
             });
 
-            // 1. Delineate strictly OVERDUE buoys
-            const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
+            // 1. Delineate strictly OVERDUE buoys into two tiers
+            const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
+            const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
 
-            // 2. Sort chronologically (most urgent first)
-            strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+            // 2. Sort both tiers chronologically (most urgent first)
+            tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+            tier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
 
-            // 3. Only feed strictly overdue buoys into the automated planner. 
-            // The user explicitly requested to NOT pre-plan buoys that are technically not yet overdue.
-            hwDueSoon = [...strictlyOverdue];
+            // 3. Only feed strictly overdue buoys into the automated planner, prioritizing direct issues (Niet OK) over date-based overdue buoys
+            hwDueSoon = [...tier1, ...tier2];
 
             // To track globally how many buoys we planned per day across all stations
             const assignedPerDay: Record<string, number> = {};
@@ -224,11 +225,14 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     return b.nextServiceDue <= limitDate.toISOString().split('T')[0];
                 });
 
-            // Only auto-plan genuinely overdue buoys. Ignore upcoming to keep the calendar uncluttered.
-            const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
+            // Apply the same two-tier priority for non-tide buoys
+            const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
+            const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
 
-            ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
-            nonTideOverdue = [...ntStrictlyOverdue];
+            ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+            ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+
+            nonTideOverdue = [...ntTier1, ...ntTier2];
 
             let ntIndex = 0;
             const now = new Date();
@@ -646,11 +650,11 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                                         <div className={clsx("flex flex-col gap-1 mt-1", activePlan.is_virtual ? "opacity-90 grayscale-[0.2]" : "")}>
                                                                             <span className={clsx(
                                                                                 "text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm flex items-center w-max gap-1",
-                                                                                activePlan.is_virtual ? "bg-purple-500 animate-none" : "bg-blue-600 animate-pulse"
+                                                                                activePlan.is_virtual && activePlan.virtual_time ? "bg-purple-500 animate-none" : "bg-blue-600 animate-pulse"
                                                                             )}>
                                                                                 <Calendar className="w-2.5 h-2.5" />
-                                                                                {activePlan.is_virtual ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(activePlan.planned_date).toLocaleDateString('nl-BE')} {activePlan.is_virtual && activePlan.virtual_time ? `(${activePlan.virtual_time})` : ''}
-                                                                                {activePlan.is_virtual && <Wand2 className="w-2.5 h-2.5 ml-0.5" />}
+                                                                                {activePlan.is_virtual && activePlan.virtual_time ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(activePlan.planned_date).toLocaleDateString('nl-BE')} {activePlan.is_virtual && activePlan.virtual_time ? `(${activePlan.virtual_time})` : ''}
+                                                                                {activePlan.is_virtual && activePlan.virtual_time && <Wand2 className="w-2.5 h-2.5 ml-0.5" />}
                                                                             </span>
                                                                             {activePlan.notes && activePlan.is_virtual && (
                                                                                 <span className="text-[9px] text-purple-600 italic line-clamp-2 max-w-[200px] leading-tight">

@@ -41,11 +41,14 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                     return b.tideRestriction === 'Hoog water';
                 });
 
-                const strictlyOverdue = hwDueSoon.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
-                strictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+                const tier1 = hwDueSoon.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
+                const tier2 = hwDueSoon.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
 
-                // Only consider genuinely overdue or manually marked buoys
-                hwDueSoon = [...strictlyOverdue];
+                tier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+                tier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+
+                // Only consider genuinely overdue or manually marked buoys, strictly prioritizing broken/maintenance ones first
+                hwDueSoon = [...tier1, ...tier2];
 
                 const assignedPerDay: Record<string, number> = {};
                 const dbPlans: any[] = [];
@@ -155,11 +158,14 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                     return true;
                 });
 
-                const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue && b.nextServiceDue < todayStrStrict || b.status === 'Niet OK' || b.status === 'Maintenance');
-                ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+                const ntTier1 = nonTideOverdue.filter(b => b.status === 'Niet OK' || b.status === 'Maintenance');
+                const ntTier2 = nonTideOverdue.filter(b => b.status !== 'Niet OK' && b.status !== 'Maintenance' && b.nextServiceDue && b.nextServiceDue < todayStrStrict);
 
-                // Only consider genuinely overdue or manually marked buoys
-                nonTideOverdue = [...ntStrictlyOverdue];
+                ntTier1.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+                ntTier2.sort((a, b) => new Date(a.nextServiceDue || 0).getTime() - new Date(b.nextServiceDue || 0).getTime());
+
+                // Only consider genuinely overdue or manually marked buoys, prioritizing broken ones
+                nonTideOverdue = [...ntTier1, ...ntTier2];
 
                 let ntIndex = 0;
                 let cursorDate = new Date();
