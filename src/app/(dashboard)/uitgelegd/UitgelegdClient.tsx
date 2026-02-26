@@ -139,16 +139,21 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             // Filter buoys that urgently need 'Hoog water' maintenance but aren't planned
             const todayStr = new Date().toISOString().split('T')[0];
             const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
-            const hwOverdue = buoys.filter(b =>
-                b.status !== 'Hidden' &&
-                b.status !== 'Maintenance' &&
-                b.tideRestriction === 'Hoog water' &&
-                b.nextServiceDue &&
-                b.nextServiceDue < todayStr &&
-                !plannedBuoyIds.has(b.id)
-            );
+            const limitDate = new Date();
+            limitDate.setDate(limitDate.getDate() + 10);
+            limitDate.setHours(23, 59, 59, 999);
 
-            if (hwOverdue.length > 0) {
+            const hwDueSoon = buoys.filter(b => {
+                if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
+                if (b.tideRestriction !== 'Hoog water') return false;
+                if (!b.nextServiceDue) return false;
+                if (plannedBuoyIds.has(b.id)) return false;
+
+                const dueDate = new Date(b.nextServiceDue);
+                return dueDate <= limitDate;
+            });
+
+            if (hwDueSoon.length > 0) {
                 // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
                 const todayDate = new Date();
                 const futureDate = new Date();
@@ -167,9 +172,9 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     { name: "Driegoten", astroHW_id: "04113411010", lat: 51.0925568254825, lng: 4.17099518412599 }
                 ];
 
-                const buoysByStation: Record<string, typeof hwOverdue> = {};
+                const buoysByStation: Record<string, typeof hwDueSoon> = {};
 
-                for (const b of hwOverdue) {
+                for (const b of hwDueSoon) {
                     let nearestStation = TIDE_STATIONS[0];
                     const lat = b.metadata?.location?.lat;
                     const lng = b.metadata?.location?.lng;
