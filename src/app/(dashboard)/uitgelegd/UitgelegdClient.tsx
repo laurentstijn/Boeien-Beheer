@@ -99,6 +99,11 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                 const dueDate = new Date(b.nextServiceDue);
                 return dueDate <= limitDate;
+            }).sort((a, b) => {
+                // Ensure genuinely overdue buoys get the tide slots first!
+                const dateA = new Date(a.nextServiceDue!).getTime();
+                const dateB = new Date(b.nextServiceDue!).getTime();
+                return dateA - dateB;
             });
 
             if (hwDueSoon.length > 0) {
