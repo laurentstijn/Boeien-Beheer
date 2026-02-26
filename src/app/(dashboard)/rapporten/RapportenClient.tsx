@@ -158,12 +158,17 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                                     const hwList = preds.highWaters || [];
                                                     const todayStr = new Date().toISOString().split('T')[0];
 
-                                                    // Filter for matches that are today or later, value >= 4.0, hour between 11-16
+                                                    // Filter for matches that are today or later, value >= 4.0, hour between 11-16, and not weekend
                                                     validMatches = hwList.filter((h: any) => {
                                                         if (h.date < todayStr) return false;
                                                         if (h.level < 4.0) return false;
                                                         const parts = h.time.split(':');
                                                         const hNum = parseInt(parts[0], 10);
+
+                                                        const dObj = new Date(h.date);
+                                                        const dayOfWeek = dObj.getDay();
+                                                        if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Skip Sunday/Saturday
+
                                                         return hNum >= 11 && hNum <= 16;
                                                     }).slice(0, 3); // Take top 3 upcoming slots
                                                 } else if (buoy.tideRestriction === 'Laag water') {

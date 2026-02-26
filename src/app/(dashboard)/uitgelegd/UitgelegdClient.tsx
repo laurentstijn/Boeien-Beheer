@@ -196,7 +196,10 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                             const dateObj = new Date(timestampStr);
                             const hour = dateObj.getHours();
                             const min = dateObj.getMinutes();
-                            if (hour >= 11 && hour <= 16 && level >= 4.0) {
+                            const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 6 is Saturday
+
+                            // Only allow weekdays (1-5), between 11-16h, and high water >= 4m
+                            if (dayOfWeek !== 0 && dayOfWeek !== 6 && hour >= 11 && hour <= 16 && level >= 4.0) {
                                 validWindows.push({
                                     date: dateObj.toISOString().split('T')[0],
                                     time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
