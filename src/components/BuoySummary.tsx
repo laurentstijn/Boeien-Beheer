@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import clsx from "clsx";
 import { BuoyIcon } from "./BuoyIcon";
 
@@ -6,56 +7,45 @@ interface BuoySummaryProps {
 }
 
 export function BuoySummary({ assets }: BuoySummaryProps) {
-    // For counting in the "Aantal" column, only count complete/assembled
-    // But for showing reserve column, count all reserve items
+    // Dynamically derive models and their colors from the assets
+    const modelsList = useMemo(() => {
+        const modelMap: Record<string, Set<string>> = {};
 
-    // Define buoy models and their expected colors
-    const models = [
-        {
-            name: "JFC MARINE 1800",
-            colors: ["Geel", "Groen", "Rood"]
-        },
-        {
-            name: "Mobilis AQ1500",
-            colors: ["Groen", "Rood", "Geel"]
-        },
-        {
-            name: "SEALITE SLB 1500",
-            colors: ["Rood"]
-        },
-        {
-            name: "JET 2000",
-            colors: ["Blauw/Geel", "Geel/Zwart", "Groen", "Rood", "Zwart/Geel/Zwart"]
-        },
-        {
-            name: "JET 9000",
-            colors: ["Rood", "Zwart", "Groen", "Geel"]
-        },
-        {
-            name: "JFC MARINE 1250",
-            colors: ["Rood"]
-        },
-        {
-            name: "Mobilis BC1241/BC1242",
-            colors: ["Geel"]
-        }
-    ];
+        assets.forEach((a: any) => {
+            const modelName = a.metadata?.model || a.item?.name;
+            const color = a.metadata?.color || 'Geel'; // Default to Geel if missing
+
+            if (modelName && (a.category === 'Boei' || a.category === 'Structuur')) {
+                if (!modelMap[modelName]) {
+                    modelMap[modelName] = new Set();
+                }
+                modelMap[modelName].add(color);
+            }
+        });
+
+        return Object.entries(modelMap)
+            .map(([name, colorSet]) => ({
+                name,
+                colors: Array.from(colorSet).sort()
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [assets]);
 
     return (
         <div className="space-y-6 mb-8">
-            {models.map((model) => {
+            {modelsList.map((model) => {
                 // Calculate stats for this model
-                const modelAssets = assets.filter((a: any) => a.metadata?.model === model.name);
+                const modelAssets = assets.filter((a: any) => (a.metadata?.model || a.item?.name) === model.name);
                 const totalCount = modelAssets.length;
 
-                if (totalCount === 0) return null; // Don't show models with no assets
+                if (totalCount === 0) return null;
 
                 const colorStats = model.colors.map(color => {
-                    const colorAssets = modelAssets.filter((a: any) => a.metadata?.color === color);
+                    const colorAssets = modelAssets.filter((a: any) => (a.metadata?.color || 'Geel') === color);
 
                     // Count only complete/assembled for "Aantal" column
                     const completeAssembledCount = colorAssets.filter((a: any) =>
-                        a.metadata?.isComplete || a.metadata?.isAssembled
+                        a.metadata?.isComplete || a.metadata?.isAssembled || a.status === 'deployed'
                     ).length;
 
                     // Count reserve separately
@@ -88,7 +78,7 @@ export function BuoySummary({ assets }: BuoySummaryProps) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-app-border">
-                                    {colorStats.filter(stat => stat.count > 0 || stat.reserve > 0).map((stat) => (
+                                    {colorStats.filter(stat => stat.count > 0 || stat.reserve > 0 || stat.maintenance > 0).map((stat) => (
                                         <tr key={stat.color} className="hover:bg-app-surface-hover transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="w-8 h-8 rounded-full bg-app-bg border border-app-border flex items-center justify-center">

@@ -285,6 +285,10 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
 
     return (
         <form action={formAction} className="space-y-4">
+            {/* Hidden fields to ensure server action gets essential data */}
+            <input type="hidden" name="category" value={formCategory} />
+            {isCustomType && <input type="hidden" name="itemId" value="custom" />}
+
             {mode === 'edit' && <input type="hidden" name="id" value={asset?.id} />}
             {asset?.category && <input type="hidden" name="category" value={asset.category} />}
 

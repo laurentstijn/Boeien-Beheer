@@ -92,25 +92,77 @@ export async function createAsset(prevState: any, formData: FormData) {
 
     try {
         const activeZone = await getZoneFilter();
-        const { error } = await supabaseAdmin.from('assets').insert({
+
+        // Fetch item details to determine category and name
+        const { data: item } = await supabaseAdmin
+            .from('items')
+            .select('name, category')
+            .eq('id', itemId)
+            .single();
+
+        const itemName = item?.name || '';
+        const itemCategory = item?.category || category || 'Custom';
+
+        // Automatic Metadata Flags
+        const isReserve = itemName.toLowerCase().includes('reserve');
+        const isComplete = !isReserve && itemCategory === 'Boei';
+        const isAssembled = !isReserve && (itemCategory === 'Boei' || itemCategory === 'Structuur');
+
+        // Extract Model Name for buoy_configurations
+        let modelName = itemName;
+        const colorRegex = /(Rood|Groen|Geel|Blauw\/Geel|Blauw|Zwart|Wit|Noord|Oost|Zuid|West)/i;
+        const reserveRegex = /(Drijflichaam|Reserve)/i;
+        const structuurRegex = /Structuur/i;
+
+        modelName = modelName.replace(colorRegex, '')
+            .replace(reserveRegex, '')
+            .replace(structuurRegex, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Ensure buoy_configuration exists for Boei/Structuur
+        if (itemCategory === 'Boei' || itemCategory === 'Structuur') {
+            const { data: existingConfig } = await supabaseAdmin
+                .from('buoy_configurations')
+                .select('id')
+                .eq('name', modelName)
+                .maybeSingle();
+
+            if (!existingConfig) {
+                await supabaseAdmin
+                    .from('buoy_configurations')
+                    .insert({
+                        name: modelName,
+                        metadata: { category: itemCategory }
+                    });
+            }
+        }
+
+        const metadata: any = {
+            notes,
+            article_number,
+            serial_number: article_number,
+            model: modelName,
+            isReserve,
+            isComplete,
+            isAssembled,
+            swivel: swivel ? 'Ja' : 'Nee',
+            hasChain,
+            chain_id: hasChain ? chain_id : null,
+            brand,
+            ble,
+            gps,
+            color: lamp_color || (itemName.match(colorRegex)?.[0] || 'Geel'),
+            lamp_color: lamp_color
+        };
+
+        const { data: newAsset, error } = await supabaseAdmin.from('assets').insert({
             item_id: itemId,
             status: status || 'in_stock',
             location: location,
-            zone: activeZone, // Ensure it's not invisible to normal users
-            metadata: {
-                notes,
-                article_number,
-                serial_number: article_number, // Mirror for table display
-                swivel: swivel ? 'Ja' : 'Nee',
-                hasChain,
-                chain_id: hasChain ? chain_id : null,
-                brand,
-                ble,
-                gps,
-                color: lamp_color,
-                lamp_color: lamp_color // Mirror for table display
-            }
-        });
+            zone: activeZone,
+            metadata: metadata
+        }).select().single();
 
         if (error) {
             console.error('Error creating asset:', error);
@@ -119,27 +171,17 @@ export async function createAsset(prevState: any, formData: FormData) {
 
         // Handle Linking if deployed
         const deployment_buoy_id = formData.get('deployment_buoy_id') as string;
-        if (status === 'deployed' && deployment_buoy_id) {
-            // Fetch the new asset ID (it wasn't returned by insert above, need to fix that or select it)
-            const { data: newAsset } = await supabaseAdmin.from('assets')
-                .select('id')
-                .eq('item_id', itemId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (newAsset) {
-                await linkLampToBuoy(deployment_buoy_id, newAsset.id);
-            }
+        if (status === 'deployed' && deployment_buoy_id && newAsset) {
+            await linkLampToBuoy(deployment_buoy_id, newAsset.id);
         }
 
         revalidatePath('/kettingen');
         revalidatePath('/stenen');
         revalidatePath('/boeien');
         revalidatePath('/');
-        // Add other paths as needed or use a more generic revalidate
         return { message: 'Asset succesvol aangemaakt!', success: true };
     } catch (e) {
+        console.error('Unexpected error in createAsset:', e);
         return { message: 'Er is een onverwachte fout opgetreden.' };
     }
 }
