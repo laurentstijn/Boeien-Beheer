@@ -194,11 +194,18 @@ export default function BuoyMapInternal({
 
     return (
         <div className="h-full w-full rounded-lg overflow-hidden relative z-0">
-            <MapContainer center={center} zoom={13} scrollWheelZoom={true} className="h-full w-full">
+            <MapContainer center={center} zoom={13} scrollWheelZoom={true} className="h-full w-full" style={{ backgroundColor: '#f1f5f9' }}>
+                {/* Basis kaart: Standaard OpenStreetMap toont water effectief. 
+                    We verlagen de opacity en zetten een zachte achtergrondkleur op de container 
+                    zodat het een heel "rustige" en lichte kaart wordt. */}
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    opacity={0.45}
+                    className="map-tiles-desaturated"
                 />
+
+                {/* OpenSeaMap Overlay */}
                 <TileLayer
                     attribution='&copy; <a href="http://www.openseamap.org">OpenSeaMap</a> contributors'
                     url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
