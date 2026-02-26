@@ -80,6 +80,10 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const todayPlannedBuoys = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
         const currentHour = new Date().getHours();
+
+        // Stop suggesting "Today" tasks if the workday is over (20:00+)
+        if (currentHour >= 20) return [];
+
         const isWorkingHoursHighTide = currentHour >= 11 && currentHour <= 16;
 
         return buoys
