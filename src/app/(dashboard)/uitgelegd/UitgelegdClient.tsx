@@ -217,23 +217,33 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             }
 
             // FALLBACK FOR OVERDUE NON-TIDE BUOYS
-            // Since they don't depend on the tide, we just slot the most urgent ones in for 'today'
+            // Since they don't depend on the tide, we just slot the most urgent ones in for the next valid workday
             const nonTideOverdue = buoys
                 .filter(b => {
                     if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
                     if (b.tideRestriction === 'Hoog water') return false;
                     if (!b.nextServiceDue) return false;
                     if (plannedBuoyIds.has(b.id)) return false;
-                    return b.nextServiceDue < todayStr;
+                    return b.nextServiceDue < todayStrStrict;
                 })
                 .sort((a, b) => (a.nextServiceDue! < b.nextServiceDue! ? -1 : 1))
                 .slice(0, 2);
+
+            let fallbackDate = new Date();
+            // If it's already past 16:00, or it's a weekend, we look forward to the next valid workday
+            if (fallbackDate.getHours() >= 16) {
+                fallbackDate.setDate(fallbackDate.getDate() + 1);
+            }
+            while (fallbackDate.getDay() === 0 || fallbackDate.getDay() === 6) {
+                fallbackDate.setDate(fallbackDate.getDate() + 1);
+            }
+            const fallbackDateStr = fallbackDate.toISOString().split('T')[0];
 
             for (const b of nonTideOverdue) {
                 dbPlans.push({
                     id: `magic-nontide-${b.id}`,
                     buoy_id: b.id,
-                    planned_date: todayStr,
+                    planned_date: fallbackDateStr,
                     notes: `VIRTUELE PLANNING: Urgente suggestie (Geen vloed nodig).`,
                     is_virtual: true,
                     virtual_time: null
