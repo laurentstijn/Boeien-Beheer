@@ -6,7 +6,7 @@ import { BuoyIcon } from "@/components/BuoyIcon";
 import {
     Pencil, Undo2, Trash2, Ship, MapPin, Search, ArrowUpDown,
     ArrowUp, ArrowDown, AlertTriangle, Calendar, Bluetooth,
-    Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2
+    Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2, Wand2
 } from "lucide-react";
 import clsx from "clsx";
 import { DeployedBuoy } from '@/lib/data';
@@ -41,6 +41,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const [plannedEntries, setPlannedEntries] = useState<any[]>([]);
     const [retrievingBuoy, setRetrievingBuoy] = useState<DeployedBuoy | null>(null);
     const [tideAdviceMap, setTideAdviceMap] = useState<Record<string, any>>({});
+    const [isAutoPlanning, setIsAutoPlanning] = useState(false);
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
@@ -140,6 +141,26 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
         refreshPlanning();
     }, [buoys]); // Re-fetch when buoys are updated
 
+    const handleAutoPlan = async () => {
+        setIsAutoPlanning(true);
+        try {
+            const res = await fetch('/api/maintenance/auto-plan', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message || 'Auto-planning uitgevoerd.');
+                refreshPlanning(); // refetch planned entries
+            } else {
+                const errData = await res.json();
+                alert('Fout bij auto-planning: ' + (errData.error || 'Onbekende fout'));
+            }
+        } catch (error) {
+            console.error("Auto Plan error:", error);
+            alert("Er liep iets mis bij het auto-plannen.");
+        } finally {
+            setIsAutoPlanning(false);
+        }
+    };
+
     const tableRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
     const handleSelectBuoy = (id: string | null) => {
@@ -238,7 +259,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                 return sortOrder === 'asc' ? comparison : -comparison;
             });
-    }, [buoys, searchTerm, sortField, sortOrder, showHidden, statusFilter]);
+    }, [buoys, searchTerm, sortField, sortOrder, showHidden, statusFilter, plannedEntries]);
 
     const SortIcon = ({ field }: { field: SortField }) => {
         if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-20" />;
@@ -301,9 +322,20 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 <div className="flex flex-col gap-6 overflow-hidden">
                     <div className="bg-app-surface rounded-xl border border-app-border overflow-hidden shadow-sm flex flex-col">
                         <div className="p-4 border-b border-app-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-app-surface sticky top-0 z-20">
-                            <div className="flex items-center gap-2">
-                                <Ship className="w-5 h-5 text-app-text-secondary" />
-                                <h2 className="text-lg font-bold text-app-text-primary">Uitgelegd ({filteredAndSortedBuoys.length})</h2>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Ship className="w-5 h-5 text-app-text-secondary" />
+                                    <h2 className="text-lg font-bold text-app-text-primary">Uitgelegd ({filteredAndSortedBuoys.length})</h2>
+                                </div>
+                                <button
+                                    onClick={handleAutoPlan}
+                                    disabled={isAutoPlanning}
+                                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 disabled:opacity-50 shadow-md shadow-purple-500/20"
+                                    title="Plan automatisch Hoog-water boeien in op bruikbare dagen in de komende 14 dagen."
+                                >
+                                    <Wand2 className={clsx("w-3.5 h-3.5", { "animate-spin": isAutoPlanning })} />
+                                    {isAutoPlanning ? "Plannen..." : "Slim Plannen (Hoog Water)"}
+                                </button>
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center flex-1 justify-end">
