@@ -255,6 +255,27 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
 
                                 return (
                                     <tr key={`${buoy.id}-${idx}`} className="hover:bg-app-surface-hover print:hover:bg-transparent">
+                                        {/* Kolom 1: Datum Inplanning */}
+                                        <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-bold text-blue-800 print:text-black text-base">
+                                                    {new Date(plan.planned_date).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                                                </span>
+                                                {plan.virtual_time && (
+                                                    <span className="inline-flex items-center gap-1 font-bold bg-blue-100 print:bg-transparent text-blue-800 print:text-black px-2 py-0.5 rounded text-xs w-max border border-blue-200 print:border-none print:p-0">
+                                                        <Droplets className="w-3 h-3 text-blue-600 print:text-black" />
+                                                        {plan.virtual_time}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        {/* Kolom 2: # Index */}
+                                        <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5 font-bold text-gray-400">
+                                            {idx + 1}
+                                        </td>
+
+                                        {/* Kolom 3: Gepland Pill & Notes */}
                                         <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
                                             <div className="flex flex-col gap-1 opacity-90">
                                                 <span
@@ -275,6 +296,8 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                                 )}
                                             </div>
                                         </td>
+
+                                        {/* Kolom 4: Boei Naam + Kleur */}
                                         <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top pt-5">
                                             <div className="flex items-center gap-2">
                                                 <div
@@ -288,9 +311,13 @@ export function RapportenClient({ initialBuoys }: RapportenClientProps) {
                                                 <span>{buoy.name}</span>
                                             </div>
                                         </td>
+
+                                        {/* Kolom 5: Locatie */}
                                         <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top pt-5">
                                             {typeof buoy.location === 'object' && buoy.location && buoy.location.lat ? `${buoy.location.lat.toFixed(5)}, ${buoy.location.lng.toFixed(5)}` : '-'}
                                         </td>
+
+                                        {/* Kolom 6: Vervaldatum (Oorspronkelijk) */}
                                         <td className="px-6 py-4 print:px-2 print:py-2 align-top pt-5">
                                             {buoy.nextServiceDue ? (
                                                 <span
