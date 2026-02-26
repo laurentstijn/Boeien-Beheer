@@ -150,7 +150,14 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
             if (hwOverdue.length > 0) {
                 // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
-                const tideRes = await fetch("https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=04112717010&format=json&period=P14D");
+                const todayDate = new Date();
+                const futureDate = new Date();
+                futureDate.setDate(todayDate.getDate() + 14);
+
+                const fromParam = todayDate.toISOString().split('T')[0];
+                const toParam = futureDate.toISOString().split('T')[0];
+
+                const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=04112717010&format=json&from=${fromParam}&to=${toParam}`);
                 if (tideRes.ok) {
                     const tideData = await tideRes.json();
                     const measurements = tideData[0]?.data || [];
