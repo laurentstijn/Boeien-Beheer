@@ -189,7 +189,8 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                     buoy_id: b.id,
                                     planned_date: win.date,
                                     notes: `VIRTUELE PLANNING: Automatisch voorgesteld wegens Hoog water om ${win.time} (${win.level.toFixed(2)}m).`,
-                                    is_virtual: true
+                                    is_virtual: true,
+                                    virtual_time: win.time
                                 });
                                 bIndex++;
                             }
@@ -570,7 +571,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                                                 activePlan.is_virtual ? "bg-purple-500 animate-none" : "bg-blue-600 animate-pulse"
                                                                             )}>
                                                                                 <Calendar className="w-2.5 h-2.5" />
-                                                                                {activePlan.is_virtual ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(activePlan.planned_date).toLocaleDateString('nl-BE')}
+                                                                                {activePlan.is_virtual ? "TIDE-MATCH:" : "GEPLAND:"} {new Date(activePlan.planned_date).toLocaleDateString('nl-BE')} {activePlan.is_virtual && activePlan.virtual_time ? `(${activePlan.virtual_time})` : ''}
                                                                                 {activePlan.is_virtual && <Wand2 className="w-2.5 h-2.5 ml-0.5" />}
                                                                             </span>
                                                                             {activePlan.notes && activePlan.is_virtual && (
