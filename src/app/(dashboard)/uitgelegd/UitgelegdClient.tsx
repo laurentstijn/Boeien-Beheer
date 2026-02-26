@@ -291,18 +291,28 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     const bPlan = plannedEntries.find(p => p.buoy_id === b.id);
 
                     if (aPlan && bPlan) {
-                        // both planned, sort by date
-                        comparison = new Date(aPlan.planned_date).getTime() - new Date(bPlan.planned_date).getTime();
+                        // both planned, sort by exact date + time
+                        const getExactDate = (plan: any) => {
+                            const d = new Date(plan.planned_date);
+                            if (plan.is_virtual && plan.virtual_time) {
+                                const [h, m] = plan.virtual_time.split(':');
+                                d.setHours(parseInt(h, 10), parseInt(m || '0', 10), 0, 0);
+                            }
+                            return d.getTime();
+                        };
+                        comparison = getExactDate(aPlan) - getExactDate(bPlan);
                     } else if (aPlan && !bPlan) {
-                        return -1; // planned items first (ignoring asc/desc temporarily to force them to top)
+                        return -1; // Force planned to top, explicitly ignoring asc/desc inversion below
                     } else if (!aPlan && bPlan) {
-                        return 1;
+                        return 1;  // Force non-planned to bottom
                     } else {
                         // neither planned, sort alphabetically by name as fallback
                         comparison = (a.name || "").localeCompare(b.name || "", undefined, { numeric: true, sensitivity: 'base' });
                     }
                 }
 
+                // If one is planned and the other isn't, we already returned abruptly above to guarantee Top-placement.
+                // Otherwise apply asc/desc flip
                 return sortOrder === 'asc' ? comparison : -comparison;
             });
     }, [buoys, searchTerm, sortField, sortOrder, showHidden, statusFilter, plannedEntries]);
