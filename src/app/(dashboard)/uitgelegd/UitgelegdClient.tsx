@@ -84,14 +84,12 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             if (!Array.isArray(dbPlans)) dbPlans = [];
 
             // AUTOMATIC MAGIC PLANNING INJECTION
-            // Filter buoys that urgently need 'Hoog water' maintenance but aren't planned
-            const todayStr = new Date().toISOString().split('T')[0];
-            const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
+            const todayStrStrict = new Date().toISOString().split('T')[0];
             const limitDate = new Date();
             limitDate.setDate(limitDate.getDate() + 10);
             limitDate.setHours(23, 59, 59, 999);
 
-            const todayStrStrict = new Date().toISOString().split('T')[0];
+            const plannedBuoyIds = new Set(dbPlans.map((p: any) => p.buoy_id));
 
             let hwDueSoon = buoys.filter(b => {
                 if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
@@ -114,6 +112,9 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
             // 3. First feed all overdue buoys into the pipeline. If there are massive amounts, capping them ensures we don't fetch/process infinite data.
             // But we prioritize them aggressively before appending the upcoming ones.
             hwDueSoon = [...strictlyOverdue, ...upcoming];
+
+            // To track globally how many buoys we planned per day across all stations
+            const assignedPerDay: Record<string, number> = {};
 
             if (hwDueSoon.length > 0) {
                 // Fetch the 14-day tide predictions for the fallback station (Prosperpolder/Zeeschelde is 04112717010)
@@ -151,8 +152,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     buoysByStation[nearestStation.astroHW_id].push(b);
                 }
 
-                // To track globally how many buoys we planned per day across all stations
-                const assignedPerDay: Record<string, number> = {};
                 const now = new Date();
 
                 // 1. Fetch all required station timelines in parallel
@@ -216,38 +215,59 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 }
             }
 
-            // FALLBACK FOR OVERDUE NON-TIDE BUOYS
-            // Since they don't depend on the tide, we just slot the most urgent ones in for the next valid workday
-            const nonTideOverdue = buoys
+            // 3. INTEGRATE NON-TIDE OVERDUE BUOYS INTO THE 10-DAY TIMELINE
+            // Since they don't depend on the tide, we just slot the most urgent ones into the remaining 2-per-day capacity slots
+            let nonTideOverdue = buoys
                 .filter(b => {
                     if (b.status === 'Hidden' || b.status === 'Lost' || b.status === 'Maintenance') return false;
                     if (b.tideRestriction === 'Hoog water') return false;
                     if (!b.nextServiceDue) return false;
                     if (plannedBuoyIds.has(b.id)) return false;
-                    return b.nextServiceDue < todayStrStrict;
-                })
-                .sort((a, b) => (a.nextServiceDue! < b.nextServiceDue! ? -1 : 1))
-                .slice(0, 2);
-
-            let fallbackDate = new Date();
-            // If it's already past 16:00, or it's a weekend, we look forward to the next valid workday
-            if (fallbackDate.getHours() >= 16) {
-                fallbackDate.setDate(fallbackDate.getDate() + 1);
-            }
-            while (fallbackDate.getDay() === 0 || fallbackDate.getDay() === 6) {
-                fallbackDate.setDate(fallbackDate.getDate() + 1);
-            }
-            const fallbackDateStr = fallbackDate.toISOString().split('T')[0];
-
-            for (const b of nonTideOverdue) {
-                dbPlans.push({
-                    id: `magic-nontide-${b.id}`,
-                    buoy_id: b.id,
-                    planned_date: fallbackDateStr,
-                    notes: `VIRTUELE PLANNING: Urgente suggestie (Geen vloed nodig).`,
-                    is_virtual: true,
-                    virtual_time: null
+                    return b.nextServiceDue <= limitDate.toISOString().split('T')[0];
                 });
+
+            // Split and prioritize strictly overdue first, then upcoming
+            const ntStrictlyOverdue = nonTideOverdue.filter(b => b.nextServiceDue! < todayStrStrict);
+            const ntUpcoming = nonTideOverdue.filter(b => b.nextServiceDue! >= todayStrStrict);
+            ntStrictlyOverdue.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
+            ntUpcoming.sort((a, b) => new Date(a.nextServiceDue!).getTime() - new Date(b.nextServiceDue!).getTime());
+            nonTideOverdue = [...ntStrictlyOverdue, ...ntUpcoming];
+
+            let ntIndex = 0;
+            const now = new Date();
+            let cursorDate = new Date();
+
+            // Advance cursor if it's past 16:00
+            if (cursorDate.getHours() >= 16) {
+                cursorDate.setDate(cursorDate.getDate() + 1);
+            }
+
+            // Look ahead for 14 days to find enough valid workdays to place them
+            for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+                if (ntIndex >= nonTideOverdue.length) break;
+
+                const checkDate = new Date(cursorDate);
+                checkDate.setDate(checkDate.getDate() + dayOffset);
+
+                const dOfWeek = checkDate.getDay();
+                if (dOfWeek === 0 || dOfWeek === 6) continue; // Skip weekends
+
+                const dateStr = checkDate.toISOString().split('T')[0];
+                if (!assignedPerDay[dateStr]) assignedPerDay[dateStr] = 0;
+
+                while (assignedPerDay[dateStr] < 2 && ntIndex < nonTideOverdue.length) {
+                    const b = nonTideOverdue[ntIndex];
+                    dbPlans.push({
+                        id: `magic-nontide-${b.id}`,
+                        buoy_id: b.id,
+                        planned_date: dateStr,
+                        notes: `VIRTUELE PLANNING: Regulier onderhoud (Geen vloed nodig).`,
+                        is_virtual: true,
+                        virtual_time: null
+                    });
+                    assignedPerDay[dateStr]++;
+                    ntIndex++;
+                }
             }
 
             setPlannedEntries(dbPlans);
