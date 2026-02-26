@@ -156,43 +156,74 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
 
                 const fromParam = todayDate.toISOString().split('T')[0];
                 const toParam = futureDate.toISOString().split('T')[0];
+                // Determine the nearest station for each buoy
+                const TIDE_STATIONS = [
+                    { name: "Prosperpolder", astroHW_id: "04112717010", lat: 51.3483272650923, lng: 4.23793225487478 },
+                    { name: "Kallo", astroHW_id: "04113436010", lat: 51.2679979571716, lng: 4.29852383884503 },
+                    { name: "Antwerpen", astroHW_id: "04112707010", lat: 51.227468146743, lng: 4.39991370684368 },
+                    { name: "Rupelmonde", astroHW_id: "04112712010", lat: 51.1359646843388, lng: 4.32230864155543 },
+                    { name: "Boom", astroHW_id: "04113401010", lat: 51.0868580992141, lng: 4.35368553727916 },
+                    { name: "Temse", astroHW_id: "04113491010", lat: 51.1228087597494, lng: 4.21867338754706 },
+                    { name: "Driegoten", astroHW_id: "04113411010", lat: 51.0925568254825, lng: 4.17099518412599 }
+                ];
 
-                const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=04112717010&format=json&from=${fromParam}&to=${toParam}`);
-                if (tideRes.ok) {
-                    const tideData = await tideRes.json();
-                    const measurements = tideData[0]?.data || [];
+                const buoysByStation: Record<string, typeof hwOverdue> = {};
 
-                    const validWindows: any[] = [];
-                    for (const [timestampStr, level] of measurements) {
-                        const dateObj = new Date(timestampStr);
-                        const hour = dateObj.getHours();
-                        const min = dateObj.getMinutes();
-                        if (hour >= 11 && hour <= 16 && level >= 4.0) {
-                            validWindows.push({
-                                date: dateObj.toISOString().split('T')[0],
-                                time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
-                                level: level
-                            });
-                        }
+                for (const b of hwOverdue) {
+                    let nearestStation = TIDE_STATIONS[0];
+                    const lat = b.metadata?.location?.lat;
+                    const lng = b.metadata?.location?.lng;
+                    if (lat && lng) {
+                        nearestStation = TIDE_STATIONS.reduce((prev, curr) => {
+                            const prevDist = Math.sqrt(Math.pow(prev.lat - lat, 2) + Math.pow(prev.lng - lng, 2));
+                            const currDist = Math.sqrt(Math.pow(curr.lat - lat, 2) + Math.pow(curr.lng - lng, 2));
+                            return currDist < prevDist ? curr : prev;
+                        });
                     }
+                    if (!buoysByStation[nearestStation.astroHW_id]) buoysByStation[nearestStation.astroHW_id] = [];
+                    buoysByStation[nearestStation.astroHW_id].push(b);
+                }
 
-                    if (validWindows.length > 0) {
-                        let bIndex = 0;
-                        for (const win of validWindows) {
-                            if (bIndex >= hwOverdue.length) break;
-                            // max 2 per day
-                            for (let i = 0; i < 2; i++) {
-                                if (bIndex >= hwOverdue.length) break;
-                                const b = hwOverdue[bIndex];
-                                dbPlans.push({
-                                    id: `magic-${b.id}`,
-                                    buoy_id: b.id,
-                                    planned_date: win.date,
-                                    notes: `VIRTUELE PLANNING: Automatisch voorgesteld wegens Hoog water om ${win.time} (${win.level.toFixed(2)}m).`,
-                                    is_virtual: true,
-                                    virtual_time: win.time
+                for (const [stationId, buoysForStation] of Object.entries(buoysByStation)) {
+                    const tideRes = await fetch(`https://www.waterinfo.vlaanderen.be/tsmpub/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&ts_id=${stationId}&format=json&from=${fromParam}&to=${toParam}`);
+
+                    if (tideRes.ok) {
+                        const tideData = await tideRes.json();
+                        const measurements = tideData[0]?.data || [];
+                        const validWindows: any[] = [];
+
+                        for (const [timestampStr, level] of measurements) {
+                            const dateObj = new Date(timestampStr);
+                            const hour = dateObj.getHours();
+                            const min = dateObj.getMinutes();
+                            if (hour >= 11 && hour <= 16 && level >= 4.0) {
+                                validWindows.push({
+                                    date: dateObj.toISOString().split('T')[0],
+                                    time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                    level: level
                                 });
-                                bIndex++;
+                            }
+                        }
+
+                        if (validWindows.length > 0) {
+                            let bIndex = 0;
+                            for (const win of validWindows) {
+                                if (bIndex >= buoysForStation.length) break;
+                                // max 2 per day
+                                for (let i = 0; i < 2; i++) {
+                                    if (bIndex >= buoysForStation.length) break;
+                                    const b = buoysForStation[bIndex];
+                                    const stationObj = TIDE_STATIONS.find(s => s.astroHW_id === stationId);
+                                    dbPlans.push({
+                                        id: `magic-${b.id}`,
+                                        buoy_id: b.id,
+                                        planned_date: win.date,
+                                        notes: `VIRTUELE PLANNING: Lokaal Hoogwater (${stationObj?.name || 'Onbekend'}) om ${win.time} (${win.level.toFixed(2)}m).`,
+                                        is_virtual: true,
+                                        virtual_time: win.time
+                                    });
+                                    bIndex++;
+                                }
                             }
                         }
                     }
