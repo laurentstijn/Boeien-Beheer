@@ -40,7 +40,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const [maintenanceBuoy, setMaintenanceBuoy] = useState<DeployedBuoy | null>(null);
     const [plannedEntries, setPlannedEntries] = useState<any[]>([]);
     const [retrievingBuoy, setRetrievingBuoy] = useState<DeployedBuoy | null>(null);
-    const [tideAdviceMap, setTideAdviceMap] = useState<Record<string, any>>({});
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
@@ -76,62 +75,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
         return 'Yellow';
     };
 
-    // Smart Suggestion: Top 2 buoys needing maintenance
-    const todayPlannedBuoys = useMemo(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const currentHour = new Date().getHours();
 
-        // Stop suggesting "Today" tasks if the workday is over (20:00+)
-        if (currentHour >= 20) return [];
-
-        const isWorkingHoursHighTide = currentHour >= 11 && currentHour <= 16;
-
-        return buoys
-            .filter(b =>
-                b.status !== 'Hidden' &&
-                b.status !== 'Maintenance' && // 'Aandacht' translates to Maintenance status
-                b.nextServiceDue &&
-                b.nextServiceDue < today &&
-                !plannedEntries.some(p => p.buoy_id === b.id)
-            )
-            .sort((a, b) => {
-                // Feature: Hoogwater constraint + Daytime constraint
-                const aHighTide = a.tideRestriction === 'Hoog water';
-                const bHighTide = b.tideRestriction === 'Hoog water';
-
-                // If it's between 11h and 16h, highly prioritize 'Hoog water' buoys
-                if (isWorkingHoursHighTide) {
-                    if (aHighTide && !bHighTide) return -1;
-                    if (!aHighTide && bHighTide) return 1;
-                }
-
-                // General Tide Preference
-                const aHasTide = a.tideRestriction && a.tideRestriction !== 'Altijd';
-                const bHasTide = b.tideRestriction && b.tideRestriction !== 'Altijd';
-                if (aHasTide && !bHasTide) return -1;
-                if (!aHasTide && bHasTide) return 1;
-
-                // Otherwise sort by how overdue they are
-                return (a.nextServiceDue! < b.nextServiceDue! ? -1 : 1);
-            })
-            .slice(0, 2);
-    }, [buoys, plannedEntries]);
-
-    // Fetch tide advice for todayPlannedBuoys
-    useEffect(() => {
-        todayPlannedBuoys.forEach(async (buoy) => {
-            if (tideAdviceMap[buoy.id]) return;
-            try {
-                const res = await fetch(`/api/tide?lat=${buoy.location.lat}&lng=${buoy.location.lng}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setTideAdviceMap(prev => ({ ...prev, [buoy.id]: data.nearest ? { ...data.nearest, ...data.advice } : null }));
-                }
-            } catch (err) {
-                console.error("Failed to fetch tide for buoy", buoy.id, err);
-            }
-        });
-    }, [todayPlannedBuoys]);
 
     const refreshPlanning = async () => {
         try {
@@ -627,19 +571,6 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                                 }
                                                                 return null;
                                                             })()}
-
-                                                            {/* Smart Suggestion: Vandaag Gepland (Top 2 oldest overdue) */}
-                                                            {todayPlannedBuoys.some(b => b.id === buoy.id) && (
-                                                                <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)] flex items-center gap-1.5 animate-pulse border border-blue-400">
-                                                                    <Calendar className="w-3 h-3" />
-                                                                    {(() => {
-                                                                        const tide = buoy.tideRestriction && buoy.tideRestriction !== 'Altijd'
-                                                                            ? ` (${buoy.tideRestriction})`
-                                                                            : '';
-                                                                        return `VANDAAG SUGGESTIE${tide}`;
-                                                                    })()}
-                                                                </span>
-                                                            )}
 
                                                             {!buoy.nextServiceDue && !plannedEntries.some(p => p.buoy_id === buoy.id) && (
                                                                 <span className="text-[10px] text-gray-400 italic">Geen datum</span>
