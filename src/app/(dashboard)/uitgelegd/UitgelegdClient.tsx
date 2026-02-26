@@ -189,10 +189,11 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                 const statusLabel = getStatusLabel(buoy);
                 const isExtern = !!(buoy as any).metadata?.external_customer;
                 const isPlanned = plannedEntries.some(p => p.buoy_id === buoy.id);
-                const matchesStatusFilter =
-                    statusFilter === 'all' ||
-                    (statusFilter === 'gepland' ? isPlanned : false) ||
-                    (statusFilter === 'extern' ? isExtern : statusLabel.toLowerCase() === statusFilter.toLowerCase());
+                let matchesStatusFilter = false;
+                if (statusFilter === 'all') matchesStatusFilter = true;
+                else if (statusFilter === 'gepland') matchesStatusFilter = isPlanned;
+                else if (statusFilter === 'extern') matchesStatusFilter = isExtern;
+                else matchesStatusFilter = statusLabel.toLowerCase() === statusFilter.toLowerCase();
 
                 return matchesSearch && matchesVisibility && matchesStatusFilter;
             })
@@ -349,14 +350,18 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                         <th className="px-4 py-4">
                                             <div className="flex items-center">Onderdelen</div>
                                         </th>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('maintenance')}>
-                                            <div className="flex items-center">Onderhoud <SortIcon field="maintenance" /></div>
+                                        <th className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors w-max space-x-1" onClick={() => toggleSort('maintenance')}>
+                                                    <span>Onderhoud</span> <SortIcon field="maintenance" />
+                                                </div>
+                                                <div className="flex items-center cursor-pointer hover:text-purple-600 text-gray-400 transition-colors w-max space-x-1" onClick={() => toggleSort('gepland')}>
+                                                    <span className="text-[9px] uppercase tracking-wider font-bold">Ingepland</span> <SortIcon field="gepland" />
+                                                </div>
+                                            </div>
                                         </th>
                                         <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
                                             <div className="flex items-center">Status <SortIcon field="status" /></div>
-                                        </th>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('gepland')}>
-                                            <div className="flex items-center">Planning <SortIcon field="gepland" /></div>
                                         </th>
                                         <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('extern')}>
                                             <div className="flex items-center"><Building2 className="w-3 h-3 mr-1 text-blue-400" />Externe Klant <SortIcon field="extern" /></div>
@@ -497,8 +502,10 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                                 <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)] flex items-center gap-1.5 animate-pulse border border-blue-400">
                                                                     <Calendar className="w-3 h-3" />
                                                                     {(() => {
-                                                                        const advice = tideAdviceMap[buoy.id];
-                                                                        return `VANDAAG GEPLAND`;
+                                                                        const tide = buoy.tideRestriction && buoy.tideRestriction !== 'Altijd'
+                                                                            ? ` (${buoy.tideRestriction})`
+                                                                            : '';
+                                                                        return `VANDAAG SUGGESTIE${tide}`;
                                                                     })()}
                                                                 </span>
                                                             )}
