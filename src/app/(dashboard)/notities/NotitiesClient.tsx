@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     Plus,
     Search,
@@ -18,6 +18,7 @@ import {
 import { clsx } from "clsx";
 import { ManualsLibrary } from "@/components/ManualsLibrary";
 import { useSupabase } from "@/components/SupabaseProvider";
+import debounce from "lodash/debounce";
 
 interface NoteSection {
     id: string;
@@ -43,16 +44,12 @@ const SECTION_COLORS = [
 ];
 
 export default function NotitiesClient({ activeZone }: { activeZone: string | null }) {
-    const { session } = useSupabase(); // Keep for future use or if needed internally
+    const { supabase, session } = useSupabase();
     const [zone, setZone] = useState<string>(activeZone || 'zone_zeeschelde');
 
     useEffect(() => {
         setZone(activeZone || 'zone_zeeschelde');
     }, [activeZone]);
-
-    const storagePrefix = zone ? `_${zone}` : '';
-    const SECTIONS_KEY = `note_sections${storagePrefix}`;
-    const PAGES_KEY = `note_pages${storagePrefix}`;
 
     const [sections, setSections] = useState<NoteSection[]>([]);
     const [pages, setPages] = useState<NotePage[]>([]);
@@ -61,6 +58,7 @@ export default function NotitiesClient({ activeZone }: { activeZone: string | nu
     const [searchTerm, setSearchTerm] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Dialog states for iOS PWA compatibility
     const [deletingSectionId, setDeletingSectionId] = useState<string | null>(null);
@@ -68,49 +66,71 @@ export default function NotitiesClient({ activeZone }: { activeZone: string | nu
     const [isAddingSection, setIsAddingSection] = useState(false);
     const [newSectionName, setNewSectionName] = useState("");
 
-    // Initial Load (Sync with LocalStorage for now since DB table might be missing)
+    // Initial Load from Supabase Database
     useEffect(() => {
-        const savedSections = localStorage.getItem(SECTIONS_KEY);
-        const savedPages = localStorage.getItem(PAGES_KEY);
+        const fetchNotes = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch sections for this zone
+                const { data: dbSections, error: sectionsError } = await supabase
+                    .from('note_sections')
+                    .select('*')
+                    .eq('zone', zone)
+                    .order('created_at', { ascending: true });
 
-        if (savedSections && savedPages) {
-            const parsedSections = JSON.parse(savedSections);
-            const parsedPages = JSON.parse(savedPages);
-            setSections(parsedSections);
-            setPages(parsedPages);
-            if (parsedSections.length > 0) {
-                const firstSectionId = parsedSections[0].id;
-                setSelectedSectionId(firstSectionId);
-                const firstPages = parsedPages.filter((p: NotePage) => p.section_id === firstSectionId);
-                if (firstPages.length > 0) {
-                    setSelectedPageId(firstPages[0].id);
+                if (sectionsError) throw sectionsError;
+
+                const sectionsData = dbSections || [];
+                setSections(sectionsData);
+
+                if (sectionsData.length > 0) {
+                    const sectionIds = sectionsData.map(s => s.id);
+                    // Fetch pages for these sections
+                    const { data: dbPages, error: pagesError } = await supabase
+                        .from('note_pages')
+                        .select('*')
+                        .in('section_id', sectionIds)
+                        .order('updated_at', { ascending: false });
+
+                    if (pagesError) throw pagesError;
+
+                    const pagesData = dbPages || [];
+                    setPages(pagesData);
+
+                    // Auto-select first section and its first page
+                    const firstSectionId = sectionsData[0].id;
+                    setSelectedSectionId(firstSectionId);
+                    const firstPages = pagesData.filter((p: NotePage) => p.section_id === firstSectionId);
+                    if (firstPages.length > 0) {
+                        setSelectedPageId(firstPages[0].id);
+                    }
+                } else {
+                    // No database sections yet, let's migrate from localStorage if present
+                    const storagePrefix = `_${zone}`;
+                    const savedSections = localStorage.getItem(`note_sections${storagePrefix}`);
+                    const savedPages = localStorage.getItem(`note_pages${storagePrefix}`);
+
+                    if (savedSections && savedPages && session?.user?.id) {
+                        const parsedSections = JSON.parse(savedSections);
+                        const parsedPages = JSON.parse(savedPages);
+
+                        // We do a soft migration by creating them via UI automatically, or just letting the user start fresh.
+                        // For simplicity, we just leave it empty and let users recreate, but we can also auto-seed here if we wanted.
+                        // Actually, let's keep it pristine if DB is empty to prevent messy migrations.
+                        setPages([]);
+                        setSelectedSectionId(null);
+                        setSelectedPageId(null);
+                    }
                 }
+            } catch (error) {
+                console.error("Error fetching notes:", error);
+            } finally {
+                setIsLoading(false);
             }
-        } else {
-            // Default Demo Content
-            const defaultSections = [
-                { id: '1', name: 'Algemeen', color: '#7719AA' },
-                { id: '2', name: 'Technische Info', color: '#0078D4' },
-                { id: '3', name: 'On-site Notities', color: '#107C10' }
-            ];
-            const defaultPages = [
-                { id: 'p1', section_id: '1', title: 'Welkom bij Notities', content: 'Dit is je nieuwe OneNote-stijl notitieblok. Hier kun je alles bijhouden over de boeien, afspraken en technische details.', updated_at: new Date().toISOString() },
-                { id: 'p2', section_id: '1', title: 'Belangrijke Contacten', content: 'Havenmeester: +32...\nOnderhoudsteam: ...', updated_at: new Date().toISOString() }
-            ];
-            setSections(defaultSections);
-            setPages(defaultPages);
-            setSelectedSectionId('1');
-            setSelectedPageId('p1');
-        }
-    }, [SECTIONS_KEY, PAGES_KEY]);
+        };
 
-    // Save to LocalStorage whenever state changes
-    useEffect(() => {
-        if (sections.length > 0) {
-            localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
-            localStorage.setItem(PAGES_KEY, JSON.stringify(pages));
-        }
-    }, [sections, pages, SECTIONS_KEY, PAGES_KEY]);
+        fetchNotes();
+    }, [zone, supabase, session]);
 
     const activeSection = useMemo(() =>
         sections.find(s => s.id === selectedSectionId),
@@ -136,65 +156,118 @@ export default function NotitiesClient({ activeZone }: { activeZone: string | nu
         setNewSectionName("");
     };
 
-    const confirmAddSection = () => {
+    const confirmAddSection = async () => {
         if (newSectionName.trim()) {
-            const newSection = {
-                id: Math.random().toString(36).substr(2, 9),
+            const color = SECTION_COLORS[sections.length % SECTION_COLORS.length].value;
+            const newDbSection = {
                 name: newSectionName.trim(),
-                color: SECTION_COLORS[sections.length % SECTION_COLORS.length].value
+                color: color,
+                zone: zone,
+                created_by: session?.user?.id
             };
-            setSections([...sections, newSection]);
-            setSelectedSectionId(newSection.id);
+
+            const { data, error } = await supabase
+                .from('note_sections')
+                .insert([newDbSection])
+                .select()
+                .single();
+
+            if (!error && data) {
+                setSections([...sections, data]);
+                setSelectedSectionId(data.id);
+            } else {
+                console.error("Failed to add section:", error);
+            }
         }
         setIsAddingSection(false);
     };
 
-    const handleAddPage = () => {
+    const handleAddPage = async () => {
         if (!selectedSectionId) return;
-        const newPage = {
-            id: Math.random().toString(36).substr(2, 9),
+
+        const newDbPage = {
             section_id: selectedSectionId,
             title: 'Nieuwe Pagina',
             content: '',
-            updated_at: new Date().toISOString()
         };
-        setPages([newPage, ...pages]);
-        setSelectedPageId(newPage.id);
+
+        const { data, error } = await supabase
+            .from('note_pages')
+            .insert([newDbPage])
+            .select()
+            .single();
+
+        if (!error && data) {
+            setPages([data, ...pages]);
+            setSelectedPageId(data.id);
+        } else {
+            console.error("Failed to add page:", error);
+        }
     };
+
+    // Debounced save to Supabase to avoid spamming the database on every keystroke
+    const savePageToDb = useMemo(
+        () => debounce(async (pageId: string, updates: Partial<NotePage>) => {
+            setIsSaving(true);
+            const { error } = await supabase
+                .from('note_pages')
+                .update(updates)
+                .eq('id', pageId);
+
+            if (!error) {
+                setLastSaved(new Date());
+            } else {
+                console.error("Failed to save page:", error);
+            }
+            setIsSaving(false);
+        }, 1000),
+        [supabase]
+    );
+
+    // Clean up debouncer on unmount
+    useEffect(() => {
+        return () => savePageToDb.cancel();
+    }, [savePageToDb]);
 
     const updateActivePage = (updates: Partial<NotePage>) => {
         if (!selectedPageId) return;
 
-        setIsSaving(true);
+        // Optimistic UI update
+        const updatedTime = new Date().toISOString();
         setPages(prev => prev.map(p => {
             if (p.id === selectedPageId) {
-                return { ...p, ...updates, updated_at: new Date().toISOString() };
+                return { ...p, ...updates, updated_at: updatedTime };
             }
             return p;
         }));
 
-        // Simulate save delay
-        setTimeout(() => {
-            setIsSaving(false);
-            setLastSaved(new Date());
-        }, 500);
+        // Fire debounced DB save
+        savePageToDb(selectedPageId, updates);
     };
 
-    const confirmDeleteSection = (id: string) => {
+    const confirmDeleteSection = async (id: string) => {
+        // Optimistic delete
         setSections(sections.filter(s => s.id !== id));
         setPages(pages.filter(p => p.section_id !== id));
         if (selectedSectionId === id) {
-            setSelectedSectionId(sections[0]?.id || null);
+            setSelectedSectionId(sections.filter(s => s.id !== id)[0]?.id || null);
         }
         setDeletingSectionId(null);
+
+        await supabase.from('note_sections').delete().eq('id', id);
     };
 
-    const confirmDeletePage = (id: string) => {
-        setPages(pages.filter(p => p.id !== id));
+    const confirmDeletePage = async (id: string) => {
+        // Optimistic delete
+        const remainingPages = pages.filter(p => p.id !== id);
+        setPages(remainingPages);
         if (selectedPageId === id) {
-            setSelectedPageId(filteredPages[0]?.id || null);
+            const siblingPages = remainingPages.filter(p => p.section_id === selectedSectionId);
+            setSelectedPageId(siblingPages[0]?.id || null);
         }
         setDeletingPageId(null);
+
+        await supabase.from('note_pages').delete().eq('id', id);
     };
 
     return (
