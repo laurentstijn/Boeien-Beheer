@@ -25,6 +25,7 @@ export type DeployedBuoy = {
     nextServiceDue?: string;
     lightCharacter?: string;
     lastServiceNotes?: string;
+    zone?: string;
 };
 
 export const deployedBuoys: DeployedBuoy[] = [
