@@ -109,8 +109,67 @@ export default async function KlantRapportPage({ params, searchParams }: {
     return (
         <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", color: '#1a1a2e', background: 'white', minHeight: '100vh' }}>
             <style>{`
-                @media print { .no-print { display: none !important; } body { background: white !important; } .rp-page-break { page-break-after: always; } }
-                .rp { max-width: 820px; margin: 0 auto; padding: 40px 48px; }
+                @media print { 
+                    @page { margin: 0; size: A4; }
+                    .no-print { display: none !important; } 
+                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; } 
+                    
+                    /* PDF Layout Elements - Only for print */
+                    .print-sidebar {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        bottom: 0;
+                        width: 38px;
+                        background-color: #1a6d8d !important;
+                        z-index: -10;
+                    }
+
+                    .print-header {
+                        position: fixed;
+                        top: 35px;
+                        left: 80px;
+                        z-index: 100;
+                    }
+
+                    .print-header img {
+                        height: 50px;
+                        object-fit: contain;
+                    }
+
+                    .print-footer-left {
+                        position: fixed;
+                        bottom: 25px;
+                        left: 80px;
+                        z-index: 100;
+                    }
+
+                    .print-footer-left img {
+                        height: 40px;
+                        object-fit: contain;
+                    }
+
+                    .print-footer-right {
+                        position: fixed;
+                        bottom: 35px;
+                        right: 40px;
+                        font-size: 8px;
+                        font-weight: 700;
+                        color: #000;
+                        z-index: 100;
+                    }
+
+                    /* Content adjustments for print */
+                    .rp-container {
+                        padding: 130px 40px 80px 80px !important; 
+                        max-width: none !important;
+                        margin: 0 !important;
+                    }
+
+                    .rp-page-break { page-break-after: always; }
+                }
+
+                .rp-container { max-width: 820px; margin: 0 auto; padding: 40px 48px; }
                 .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #2563eb; padding-bottom:18px; margin-bottom:32px; }
                 .rp-logo { display:flex; align-items:center; gap:10px; }
                 .rp-logo-icon { width:38px; height:38px; background:#2563eb; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
@@ -145,9 +204,21 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 ${isEmbedded ? '.no-embedded { display: none !important; }' : ''}
             `}</style>
 
-            {!isEmbedded && <PrintButton />}
+            {/* Print Elements (PDF Template) */}
+            <div className="print-sidebar hidden print:block"></div>
+            <div className="print-header hidden print:block">
+                <img src="/extracted_logo_0.png" alt="Agentschap Maritieme Dienstverlening & Kust" />
+            </div>
+            <div className="print-footer-left hidden print:block">
+                <img src="/extracted_logo_1.png" alt="Vlaanderen is maritiem" />
+            </div>
+            <div className="print-footer-right hidden print:block">
+                agentschapmdk.be
+            </div>
 
-            <div className="rp">
+            {!isEmbedded && <div className="no-print"><PrintButton /></div>}
+
+            <div className="rp-container">
                 {/* Header */}
                 <div className="rp-header">
                     <div className="rp-logo">
@@ -240,9 +311,8 @@ export default async function KlantRapportPage({ params, searchParams }: {
                     ))
                 )}
 
-                <div className="rp-footer">
-                    <span>Boei Beheer – Boeien Zeeschelde</span>
-                    <span>{today}</span>
+                <div className="rp-footer hidden print:flex">
+                    <span style={{ color: 'transparent' }}>_</span>
                 </div>
             </div>
         </div>

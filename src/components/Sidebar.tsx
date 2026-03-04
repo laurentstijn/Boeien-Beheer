@@ -24,7 +24,8 @@ import {
     ClipboardList,
     Users,
     Calculator,
-    X
+    X,
+    Building2
 } from "lucide-react";
 import clsx from "clsx";
 import { useSupabase } from "@/components/SupabaseProvider";
@@ -79,6 +80,7 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
                 { name: "Gebruikers", href: "/gebruikers", icon: Users, count: null },
                 { name: "Google planning", href: "/rapporten", icon: FileText, count: null },
                 { name: "Dagelijks Rapport", href: "/dagelijks-rapport", icon: ClipboardList, count: null },
+                { name: "Rapporten Externe Klanten", href: "/rapporten/klanten", icon: Building2, count: null },
             ]
         },
     ];
