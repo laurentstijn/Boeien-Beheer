@@ -48,8 +48,8 @@ export function GebruikersClient() {
             const user = users.find(u => u.id === userId);
             if (!user) return;
 
-            const currentRole = updates.role || user.user_metadata?.role;
-            const currentZone = updates.zone || user.user_metadata?.zone;
+            const currentRole = updates.role !== undefined ? updates.role : user.user_metadata?.role;
+            const currentZone = updates.zone !== undefined ? updates.zone : user.user_metadata?.zone;
 
             const res = await fetch(`/api/admin/users/${userId}`, {
                 method: 'PATCH',
