@@ -6,7 +6,8 @@ import { BuoyIcon } from "@/components/BuoyIcon";
 import {
     Pencil, Undo2, Trash2, Ship, MapPin, Search, ArrowUpDown,
     ArrowUp, ArrowDown, AlertTriangle, Calendar, Bluetooth,
-    Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2, Wand2
+    Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2, Wand2,
+    ChevronDown, ChevronUp
 } from "lucide-react";
 import clsx from "clsx";
 import { DeployedBuoy } from '@/lib/data';
@@ -469,7 +470,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                             <table className="w-full text-left text-sm text-app-text-secondary border-collapse">
                                 <thead className="bg-app-surface text-app-text-primary font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 shadow-sm border-b border-app-border">
                                     <tr>
-                                        <th className="px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('name')}>
+                                        <th className="px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors w-full sm:w-auto" onClick={() => toggleSort('name')}>
                                             <div className="flex items-center">Boei Naam <SortIcon field="name" /></div>
                                         </th>
                                         <th className="hidden sm:table-cell px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('type')}>
@@ -488,13 +489,13 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                 </div>
                                             </div>
                                         </th>
-                                        <th className="px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
+                                        <th className="hidden sm:table-cell px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
                                             <div className="flex items-center">Status <SortIcon field="status" /></div>
                                         </th>
                                         <th className="hidden lg:table-cell px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('extern')}>
                                             <div className="flex items-center"><Building2 className="w-3 h-3 mr-1 text-blue-400" />Externe Klant <SortIcon field="extern" /></div>
                                         </th>
-                                        <th className="px-3 md:px-6 py-4 text-right">Acties</th>
+                                        <th className="px-3 md:px-6 py-4 text-right whitespace-nowrap hidden sm:table-cell">Acties</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-app-border">
@@ -517,18 +518,67 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                         "opacity-50 grayscale-[0.5]": buoy.status === 'Hidden'
                                                     })}
                                                 >
-                                                    <td className="px-3 md:px-6 py-3 md:py-4">
-                                                        <div className="flex items-center gap-2">
+                                                    <td className="px-3 md:px-6 py-5 md:py-4">
+                                                        <div className="flex items-start gap-4">
                                                             <BuoyIcon
                                                                 color={getBuoyDisplayColor(buoy)}
                                                                 type={`${buoy.buoyType?.name || ''} ${buoy.metadata?.boei_soort || ''} ${buoy.metadata?.model || ''} ${buoy.name}`}
                                                                 size="sm"
-                                                                className="shrink-0"
+                                                                className="shrink-0 w-8 h-8 mt-1"
                                                             />
-                                                            <div className="flex flex-col justify-center min-w-0">
-                                                                <span className="font-bold text-app-text-primary text-sm leading-tight truncate">{buoy.name}</span>
+                                                            <div className="flex flex-col justify-center min-w-0 pr-2 flex-1">
+                                                                <span className="font-bold text-app-text-primary text-[16px] leading-tight truncate mb-2">{buoy.name}</span>
+                                                                {/* Mobile only: toon status + planning inline, with better spacing and bigger badges */}
+                                                                <div className="flex sm:hidden flex-wrap items-center gap-2">
+                                                                    {buoy.status === 'Maintenance' ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wide bg-orange-100/90 text-orange-700 border border-orange-200/50"><AlertTriangle className="w-3 h-3" />AANDACHT</span>
+                                                                    ) : buoy.status === 'Lost' ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wide bg-red-100/90 text-red-700 border border-red-200/50">VERMIST</span>
+                                                                    ) : buoy.status === 'Hidden' ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wide bg-gray-100/90 text-gray-600 border border-gray-200/50">VERBORGEN</span>
+                                                                    ) : (buoy.nextServiceDue && new Date(buoy.nextServiceDue) < new Date()) ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wide bg-[#E53935] text-white shadow-sm"><AlertTriangle className="w-3 h-3 text-white" />NIET OK</span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wide bg-green-100/90 text-green-700 border border-green-200/50">OK</span>
+                                                                    )}
+                                                                    {/* Planning info op mobiel - clearer typography */}
+                                                                    {(() => {
+                                                                        const planned = plannedEntries.find(p => p.buoy_id === buoy.id);
+                                                                        if (planned) {
+                                                                            const timeStr = planned.virtual_time || '';
+                                                                            let constraintStr = '';
+                                                                            if (buoy.tideRestriction === 'Hoog water') constraintStr = 'HW';
+                                                                            if (buoy.tideRestriction === 'Laag water') constraintStr = 'LW';
+
+                                                                            return (
+                                                                                <span className={clsx(
+                                                                                    "inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-md border",
+                                                                                    planned.is_virtual && planned.virtual_time ? "bg-purple-100/70 text-purple-700 border-purple-200/50" : "bg-blue-50 text-blue-700 border-blue-200/50"
+                                                                                )}>
+                                                                                    <Calendar className={clsx("w-3.5 h-3.5", planned.is_virtual && planned.virtual_time ? "text-purple-600" : "text-blue-600")} />
+                                                                                    {new Date(planned.planned_date).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit' })}
+                                                                                    {(timeStr || constraintStr) && (
+                                                                                        <span className={clsx(
+                                                                                            "ml-0.5 opacity-80 border-l pl-1.5 flex items-center gap-1",
+                                                                                            planned.is_virtual && planned.virtual_time ? "border-purple-300" : "border-blue-300"
+                                                                                        )}>
+                                                                                            {timeStr}
+                                                                                            {constraintStr && <span className={clsx("text-[9px] px-1 rounded", planned.is_virtual && planned.virtual_time ? "bg-purple-200/50" : "bg-blue-200/50")}>{constraintStr}</span>}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </span>
+                                                                            );
+                                                                        }
+                                                                        if (buoy.nextServiceDue) return (
+                                                                            <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 font-semibold bg-gray-50 px-2 py-1 rounded-md border border-gray-200/50">
+                                                                                <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                                                                {new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                                            </span>
+                                                                        );
+                                                                        return null;
+                                                                    })()}
+                                                                </div>
                                                             </div>
-                                                            {selectedBuoyId === buoy.id && <MapPin className="w-4 h-4 text-blue-500 animate-bounce shrink-0" />}
                                                         </div>
                                                     </td>
                                                     <td className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4 font-medium">
@@ -647,7 +697,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 md:px-6 py-3 md:py-4">
+                                                    <td className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4">
                                                         {buoy.status === 'Maintenance' ? (
                                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
                                                                 <AlertTriangle className="w-3 h-3" />
@@ -692,8 +742,26 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             );
                                                         })()}
                                                     </td>
-                                                    <td className="px-2 md:px-6 py-3 md:py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                                                    <td className="px-2 md:px-6 py-5 md:py-4 text-right">
+                                                        {/* Mobile: toon chevron EN map pin als geselecteerd */}
+                                                        <div className="flex sm:hidden flex-col items-end justify-between h-full min-h-[40px]" onClick={e => e.stopPropagation()}>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleSelectBuoy(selectedBuoyId === buoy.id ? null : buoy.id); }}
+                                                                className="p-1.5 hover:bg-app-surface-hover rounded-lg text-app-text-secondary transition-all"
+                                                            >
+                                                                {selectedBuoyId === buoy.id
+                                                                    ? <ChevronUp className="w-5 h-5 text-blue-500" />
+                                                                    : <ChevronDown className="w-5 h-5 text-gray-400" />
+                                                                }
+                                                            </button>
+                                                            {selectedBuoyId === buoy.id && (
+                                                                <div className="mt-auto pr-1">
+                                                                    <MapPin className="w-4 h-4 text-blue-500 animate-bounce shadow-sm rounded-full" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {/* Desktop: toon alle actie-knoppen */}
+                                                        <div className="hidden sm:flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
                                                             <button
                                                                 onClick={() => setMaintenanceBuoy(buoy)}
                                                                 className="p-2 hover:bg-app-surface-hover rounded-lg text-app-text-secondary hover:text-blue-500 transition-all shadow-sm"
@@ -714,8 +782,68 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                 {selectedBuoyId === buoy.id && (
                                                     <tr className="bg-app-bg/50 border-l-4 border-l-blue-500">
                                                         <td colSpan={7} className="px-3 md:px-6 py-4 md:py-6 font-geist">
-                                                            <div className="flex flex-col gap-6">
-                                                                <MaintenanceHistoryDetails buoy={buoy} onUpdate={handleUpdateBuoy} />
+                                                            {/* Mobile: toon volledige boei details inclusief type, onderdelen, planning en actie-knoppen */}
+                                                            <div className="flex flex-col gap-4">
+                                                                {/* Boei details sectie — altijd zichtbaar in uitklap */}
+                                                                <div className="grid grid-cols-2 gap-3 sm:hidden">
+                                                                    <div className="bg-app-surface rounded-lg p-3 border border-app-border">
+                                                                        <div className="text-[9px] uppercase font-bold text-app-text-secondary/60 mb-1">Type</div>
+                                                                        <div className="text-xs font-semibold text-app-text-primary">{(buoy.buoyType?.name && buoy.buoyType.name !== 'Onbekend') ? buoy.buoyType.name : (buoy.metadata?.model || buoy.metadata?.boei_soort || 'Onbekend')}</div>
+                                                                    </div>
+                                                                    <div className="bg-app-surface rounded-lg p-3 border border-app-border">
+                                                                        <div className="text-[9px] uppercase font-bold text-app-text-secondary/60 mb-1">Zone</div>
+                                                                        <div className="text-xs font-semibold text-app-text-primary">{buoy.zone || '—'}</div>
+                                                                    </div>
+                                                                    {buoy.nextServiceDue && (
+                                                                        <div className="bg-app-surface rounded-lg p-3 border border-app-border">
+                                                                            <div className="text-[9px] uppercase font-bold text-app-text-secondary/60 mb-1">Laatste onderhoud</div>
+                                                                            <div className="text-xs font-semibold text-app-text-primary">{new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE')}</div>
+                                                                        </div>
+                                                                    )}
+                                                                    {(() => {
+                                                                        const planned = plannedEntries.find(p => p.buoy_id === buoy.id);
+                                                                        if (!planned) return null;
+                                                                        return (
+                                                                            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                                                                                <div className="text-[9px] uppercase font-bold text-purple-500/80 mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Ingepland</div>
+                                                                                <div className="text-xs font-semibold text-purple-700">{new Date(planned.planned_date).toLocaleDateString('nl-BE')}</div>
+                                                                                {planned.virtual_time && <div className="text-[10px] text-purple-600 mt-1 font-bold">{planned.virtual_time}</div>}
+                                                                                {buoy.tideRestriction && buoy.tideRestriction !== 'Altijd' && <div className="text-[9px] font-black underline text-purple-500 uppercase tracking-widest mt-0.5">{buoy.tideRestriction}</div>}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                    {/* Onderdelen overzicht */}
+                                                                    <div className="col-span-2 bg-app-surface rounded-lg p-3 border border-app-border">
+                                                                        <div className="text-[9px] uppercase font-bold text-app-text-secondary/60 mb-2">Onderdelen</div>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {buoy.metadata?.light ? <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full border border-yellow-200">💡 {buoy.metadata.light.character || buoy.metadata.light.type || 'Gekoppeld'}</span> : <span className="text-[10px] text-gray-400">💡 geen lamp</span>}
+                                                                            {buoy.metadata?.chain ? <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">⛓️ {buoy.metadata.chain.type || 'Gekoppeld'}</span> : null}
+                                                                            {buoy.metadata?.sinker ? <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full border border-gray-200">🪨 {buoy.metadata.sinker.type || 'Gekoppeld'}</span> : null}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Actie-knoppen op mobiel */}
+                                                                <div className="flex sm:hidden items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                                    <button
+                                                                        onClick={() => setMaintenanceBuoy(buoy)}
+                                                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all text-sm font-bold shadow-sm"
+                                                                    >
+                                                                        <Hammer className="w-4 h-4" /> Onderhoud
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setEditingBuoy(buoy)}
+                                                                        className="flex items-center justify-center gap-2 py-2.5 px-3 bg-app-surface hover:bg-app-surface-hover border border-app-border text-app-text-primary rounded-lg transition-all text-sm font-bold"
+                                                                    >
+                                                                        <Pencil className="w-4 h-4" /> Bewerken
+                                                                    </button>
+                                                                    <button onClick={() => handleDeleteBuoy(buoy.id)} className="flex items-center justify-center py-2.5 px-3 bg-app-surface hover:bg-app-surface-hover border border-app-border text-app-text-secondary rounded-lg transition-all text-sm">
+                                                                        <Undo2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                                {/* Desktop: alleen onderhoud history */}
+                                                                <div className="hidden sm:block">
+                                                                    <MaintenanceHistoryDetails buoy={buoy} onUpdate={handleUpdateBuoy} />
+                                                                </div>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -775,7 +903,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                     }
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

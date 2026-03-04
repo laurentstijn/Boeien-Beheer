@@ -42,9 +42,10 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased bg-app-bg text-app-text-primary flex h-screen overflow-hidden`}
+                suppressHydrationWarning
             >
                 <SupabaseProvider>
                     {children}
