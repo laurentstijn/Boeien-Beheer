@@ -153,7 +153,17 @@ export async function POST(req: Request) {
         // Special check: If the buoy itself was replaced, we MUST update the main deployed_buoys record
         // to point to the new asset if required, but in this system it seems the deployments 
         // exist as top-level entities `deployed_buoys` that merely hold metadata of components.
-        // We will just let the metadata update handle it.
+        // We update the metadata here to apply all swap changes.
+
+        const { error: buoyUpdateError } = await supabaseAdmin
+            .from('deployed_buoys')
+            .update({ metadata: newMetadata })
+            .eq('id', buoyId);
+
+        if (buoyUpdateError) {
+            console.error('Error updating buoy metadata after swap:', buoyUpdateError);
+            // Optionally, handle error, but let's continue logging maintenance
+        }
 
         if (body.id) {
             // Update existing log
