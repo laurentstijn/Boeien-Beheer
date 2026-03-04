@@ -1,10 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Building2, ChevronRight, FileText, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Building2, ChevronRight, FileText, X, Printer } from 'lucide-react';
 
 export default function KlantenRapportenClient({ customers }: { customers: string[] }) {
     const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    const handlePrint = () => {
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.print();
+        }
+    };
 
     return (
         <>
@@ -69,15 +76,25 @@ export default function KlantenRapportenClient({ customers }: { customers: strin
                                 <Building2 className="w-5 h-5 text-blue-500" />
                                 <h2 className="text-lg font-bold text-app-text-primary">{selectedCustomer}</h2>
                             </div>
-                            <button
-                                onClick={() => setSelectedCustomer(null)}
-                                className="p-1.5 bg-app-bg hover:bg-app-surface-hover text-app-text-secondary rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handlePrint}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    Print Rapport
+                                </button>
+                                <button
+                                    onClick={() => setSelectedCustomer(null)}
+                                    className="p-1.5 bg-app-bg hover:bg-app-surface-hover text-app-text-secondary rounded-lg transition-colors ml-2"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 w-full bg-gray-100 dark:bg-gray-900 relative">
                             <iframe
+                                ref={iframeRef}
                                 src={`/rapport/klant/${encodeURIComponent(selectedCustomer)}?embedded=true`}
                                 className="w-full h-full border-0 absolute inset-0"
                                 title={`Rapport ${selectedCustomer}`}
