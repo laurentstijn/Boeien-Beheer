@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Hammer, Anchor, Link, Lightbulb, MapPin, AlertTriangle, CheckCircle, ChevronDown, Search, ShieldCheck, Layers } from 'lucide-react';
+import { X, Save, Hammer, Anchor, Link, Lightbulb, MapPin, AlertTriangle, CheckCircle, ChevronDown, Search, ShieldCheck, Layers, Ship } from 'lucide-react';
 import { DeployedBuoy, InventoryItem } from '@/lib/data';
 import { supabase } from '@/lib/supabase';
 import { LightCharacterInput } from '@/components/LightCharacterInput';
@@ -60,6 +60,7 @@ export default function MaintenanceDialog({
     const [replaceSinker, setReplaceSinker] = useState(!!logToEdit?.metadata?.sinker);
     const [replaceShackle, setReplaceShackle] = useState(!!logToEdit?.metadata?.shackle);
     const [replaceZinc, setReplaceZinc] = useState(!!logToEdit?.metadata?.zinc);
+    const [replaceBuoy, setReplaceBuoy] = useState(false); // Can't easily be checked from metadata of standard replacements since it replaces the entire parent asset
 
     // Available Inventory
     const [availableChains, setAvailableChains] = useState<InventoryItem[]>([]);
@@ -67,12 +68,14 @@ export default function MaintenanceDialog({
     const [availableSinkers, setAvailableSinkers] = useState<InventoryItem[]>([]);
     const [availableShackles, setAvailableShackles] = useState<InventoryItem[]>([]);
     const [availableZincs, setAvailableZincs] = useState<InventoryItem[]>([]);
+    const [availableBuoys, setAvailableBuoys] = useState<InventoryItem[]>([]);
 
     const [selectedChainId, setSelectedChainId] = useState(logToEdit?.metadata?.chain || '');
     const [selectedLightId, setSelectedLightId] = useState(logToEdit?.metadata?.light || '');
     const [selectedSinkerId, setSelectedSinkerId] = useState(logToEdit?.metadata?.sinker || '');
     const [selectedShackleId, setSelectedShackleId] = useState(logToEdit?.metadata?.shackle || '');
     const [selectedZincId, setSelectedZincId] = useState(logToEdit?.metadata?.zinc || '');
+    const [selectedBuoyId, setSelectedBuoyId] = useState('');
 
     // Old Status: 'broken' (Stuk) or 'lost' (Kwijt)
     const [chainOldStatus, setChainOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.chain_lost ? 'lost' : 'broken');
@@ -80,6 +83,8 @@ export default function MaintenanceDialog({
     const [sinkerOldStatus, setSinkerOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.sinker_lost ? 'lost' : 'broken');
     const [shackleOldStatus, setShackleOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.shackle_lost ? 'lost' : 'broken');
     const [zincOldStatus, setZincOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.zinc_lost ? 'lost' : 'broken');
+    const [buoyOldStatus, setBuoyOldStatus] = useState<'broken' | 'lost'>('broken');
+    const [buoyReplaceReason, setBuoyReplaceReason] = useState('');
 
     // History
     const [history, setHistory] = useState<any[]>([]);
@@ -127,7 +132,8 @@ export default function MaintenanceDialog({
         if (replaceSinker && availableSinkers.length === 0) loadStock('Steen');
         if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting');
         if (replaceZinc && availableZincs.length === 0) loadStock('Zinkblok');
-    }, [replaceChain, replaceLight, replaceSinker, replaceShackle, replaceZinc]);
+        if (replaceBuoy && availableBuoys.length === 0) loadStock('Boei');
+    }, [replaceChain, replaceLight, replaceSinker, replaceShackle, replaceZinc, replaceBuoy]);
 
     const loadStock = async (category: string) => {
         try {
@@ -154,6 +160,7 @@ export default function MaintenanceDialog({
                 if (category === 'Steen') setAvailableSinkers(data);
                 if (category === 'Sluiting') setAvailableShackles(data);
                 if (category === 'Zinkblok') setAvailableZincs(data);
+                if (category === 'Boei') setAvailableBuoys(data);
             }
         } catch (error) {
             console.error(`Failed to load ${category} stock`, error);
@@ -209,11 +216,14 @@ export default function MaintenanceDialog({
                 light_character: lightCharacter,
                 status: needsAttention ? 'Maintenance' : 'OK',
                 replacements: {
+                    buoy: replaceBuoy ? selectedBuoyId : null,
                     chain: replaceChain ? selectedChainId : null,
                     light: replaceLight ? selectedLightId : null,
                     sinker: replaceSinker ? selectedSinkerId : null,
                     shackle: replaceShackle ? selectedShackleId : null,
                     zinc: replaceZinc ? selectedZincId : null,
+                    buoy_lost: buoyOldStatus === 'lost',
+                    buoy_replace_reason: replaceBuoy ? buoyReplaceReason : null,
                     chain_lost: chainOldStatus === 'lost',
                     light_lost: lightOldStatus === 'lost',
                     sinker_lost: sinkerOldStatus === 'lost',
@@ -428,6 +438,7 @@ export default function MaintenanceDialog({
                                 if (meta.chain) replacements.push({ label: meta.replacement_names?.chain || 'Ketting', lost: meta.chain_lost });
                                 if (meta.light) replacements.push({ label: meta.replacement_names?.light || 'Lamp', lost: meta.light_lost });
                                 if (meta.sinker) replacements.push({ label: meta.replacement_names?.sinker || 'Steen', lost: meta.sinker_lost });
+                                if (meta.buoy) replacements.push({ label: meta.replacement_names?.buoy || 'Boei Body', lost: meta.buoy_lost });
                                 return (
                                     <div className="p-4 rounded-xl bg-app-bg/50 border border-app-border space-y-3">
                                         {/* Header */}
@@ -489,6 +500,56 @@ export default function MaintenanceDialog({
                         </h3>
 
                         <div className="space-y-4">
+                            {/* Buoy Replacement */}
+                            <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 p-2 rounded-lg shadow-sm">
+                                            <Ship className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <span className="font-bold text-app-text-primary text-blue-900 dark:text-blue-100">Boei Vervangen</span>
+                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.buoyType.name} ({buoy.buoyType.color})</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={replaceBuoy} onChange={(e) => setReplaceBuoy(e.target.checked)} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+
+                                {replaceBuoy && (
+                                    <div className="mt-3 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 bg-white/50 dark:bg-black/20 p-4 border border-blue-100 dark:border-blue-800 rounded-lg">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oude boei</label>
+                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
+                                                <button onClick={() => setBuoyOldStatus('broken')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", buoyOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
+                                                    Stuk (Onderhoud)
+                                                </button>
+                                                <button onClick={() => setBuoyOldStatus('lost')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", buoyOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
+                                                    Kwijt (Verloren/Aangevaren)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium text-app-text-secondary uppercase block">Reden voor vervanging</label>
+                                            <textarea
+                                                value={buoyReplaceReason}
+                                                onChange={(e) => setBuoyReplaceReason(e.target.value)}
+                                                placeholder="Bijv. aangevaren, zware schade door stroming..."
+                                                className="w-full px-3 py-2 text-sm rounded-lg border border-app-border bg-app-bg focus:ring-2 focus:ring-blue-500 outline-none transition-all h-20 resize-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Boei uit Stock</label>
+                                            <AssetPicker items={availableBuoys} value={selectedBuoyId} onChange={setSelectedBuoyId} placeholder="Selecteer nieuwe boei..." />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Chain Replacement */}
                             <div className="p-4 rounded-xl border border-app-border bg-app-bg/50">
                                 <div className="flex items-center justify-between mb-4">

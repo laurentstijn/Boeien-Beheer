@@ -1,5 +1,5 @@
 import { linkLampToBuoy, unlinkLampFromBuoy, linkChainToBuoy, unlinkChainFromBuoy, linkStoneToBuoy, unlinkStoneFromBuoy, uploadBuoyPhoto } from '@/app/actions';
-import { Lightbulb, Unplug, Link, X, Save, Trash2, MapPin, Anchor, Component, Building2, FileText, ChevronDown, Printer, Undo2, Camera, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
+import { Lightbulb, Unplug, Link, X, Save, Trash2, MapPin, Anchor, Component, Building2, FileText, ChevronDown, Printer, Undo2, Camera, Image as ImageIcon, Loader2, Upload, Layers } from 'lucide-react';
 import { BuoyIcon } from '@/components/BuoyIcon';
 import { LightCharacterInput } from '@/components/LightCharacterInput';
 import AssetPicker from '@/components/AssetPicker';
@@ -750,6 +750,17 @@ export default function EditDeployedBuoyDialog({
                                     >
                                         <FileText className="w-3.5 h-3.5" />
                                         Rapport Openen / Afdrukken
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const url = `/rapport/klant/${encodeURIComponent(customerName)}`;
+                                            window.open(url, '_blank');
+                                        }}
+                                        disabled={!customerName}
+                                        className="flex items-center gap-2 w-full justify-center py-2 rounded-lg border border-purple-500/20 bg-purple-500/5 text-purple-600 hover:bg-purple-500/10 text-xs font-bold transition-colors disabled:opacity-50"
+                                    >
+                                        <Layers className="w-3.5 h-3.5" />
+                                        Klant Historiek Rapport
                                     </button>
                                 </div>
                             )}

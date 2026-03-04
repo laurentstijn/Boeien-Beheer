@@ -112,6 +112,23 @@ export async function POST(req: Request) {
         const { data: buoyData } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
         const newMetadata = { ...(buoyData?.metadata || {}) };
 
+        if (replacements.buoy) {
+            const result = await swapComponent(replacements.buoy, replacements.buoy_lost, 'buoy', 'Boei');
+            if (result) {
+                newMetadata.buoy = result;
+
+                // IMPORTANT: When replacing the buoy itself, we must also update the deployed_buoys 
+                // tracking reference if we rely on buoy_config_id or similar. 
+                // For now, let's look up the new config id from the asset's item list
+                const { data: assetItem } = await supabaseAdmin.from('assets').select('item_id').eq('id', result.asset_id).single();
+                if (assetItem?.item_id) {
+                    // This relies on the new item being a buoy configuration. Since we don't have a direct link 
+                    // in this flat schema we just inject into metadata. 
+                    // To keep things synced, we might need to update the basic `buoy_configurations` link if applicable.
+                    newMetadata.model = result.type;
+                }
+            }
+        }
         if (replacements.chain) {
             const result = await swapComponent(replacements.chain, replacements.chain_lost, 'chain', 'Ketting');
             if (result) newMetadata.chain = result;
@@ -132,6 +149,11 @@ export async function POST(req: Request) {
             const result = await swapComponent(replacements.zinc, replacements.zinc_lost, 'zinc', 'Zinkblok');
             if (result) newMetadata.zinc = result;
         }
+
+        // Special check: If the buoy itself was replaced, we MUST update the main deployed_buoys record
+        // to point to the new asset if required, but in this system it seems the deployments 
+        // exist as top-level entities `deployed_buoys` that merely hold metadata of components.
+        // We will just let the metadata update handle it.
 
         if (body.id) {
             // Update existing log

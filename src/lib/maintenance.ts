@@ -98,6 +98,10 @@ export async function recalculateBuoyMaintenance(buoyId: string) {
     updatedBuoy.chain = updatedBuoy.metadata?.chain || { type: 'Zwart', length: '', thickness: '' };
     updatedBuoy.sinker = updatedBuoy.metadata?.sinker || { weight: '', type: '' };
     updatedBuoy.light = updatedBuoy.metadata?.light || { serialNumber: '', type: '' };
+    if (updatedBuoy.metadata?.buoy) {
+        updatedBuoy.buoyType.name = updatedBuoy.metadata.buoy.type;
+        updatedBuoy.buoyType.color = (updatedBuoy.metadata.buoy.color || 'yellow').toLowerCase();
+    }
 
     return updatedBuoy;
 }

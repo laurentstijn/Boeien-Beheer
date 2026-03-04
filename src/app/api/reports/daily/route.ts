@@ -20,6 +20,7 @@ export async function GET(request: Request) {
                     id,
                     name,
                     zone,
+                    metadata,
                     buoy_configurations (
                         name,
                         metadata
