@@ -58,14 +58,14 @@ export async function POST(req: Request) {
         const replacementNames: Record<string, string> = {};
 
         // Helper for swapping components
-        const swapComponent = async (itemId: string, isLost: boolean, typeKey: string, categoryName: string) => {
-            if (!itemId) return;
+        const swapComponent = async (assetId: string, isLost: boolean, typeKey: string, categoryName: string) => {
+            if (!assetId) return;
 
             // 1. Find an available asset of this item type
             const { data: availableAssets, error: assetError } = await supabaseAdmin
                 .from('assets')
                 .select('id, items(name, specs)')
-                .eq('item_id', itemId)
+                .eq('id', assetId)
                 .neq('status', 'deployed')
                 .limit(1)
                 .single();

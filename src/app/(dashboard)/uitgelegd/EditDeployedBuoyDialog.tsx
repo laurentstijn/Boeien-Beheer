@@ -181,6 +181,7 @@ export default function EditDeployedBuoyDialog({
     const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
     const [unlinkTargetStatus, setUnlinkTargetStatus] = useState('in_stock');
     const [showReportPopup, setShowReportPopup] = useState(false);
+    const [showCustomerReportPopup, setShowCustomerReportPopup] = useState(false);
 
     const [photoUrl, setPhotoUrl] = useState<string>(buoy.metadata?.photo_url || '');
     const [isUploading, setIsUploading] = useState(false);
@@ -210,10 +211,21 @@ export default function EditDeployedBuoyDialog({
         }
     };
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const customerIframeRef = useRef<HTMLIFrameElement>(null);
 
     const handlePrint = () => {
         if (iframeRef.current) {
             const contentWindow = iframeRef.current.contentWindow;
+            if (contentWindow) {
+                contentWindow.focus();
+                contentWindow.print();
+            }
+        }
+    };
+
+    const handleCustomerPrint = () => {
+        if (customerIframeRef.current) {
+            const contentWindow = customerIframeRef.current.contentWindow;
             if (contentWindow) {
                 contentWindow.focus();
                 contentWindow.print();
@@ -752,10 +764,7 @@ export default function EditDeployedBuoyDialog({
                                         Rapport Openen / Afdrukken
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            const url = `/rapport/klant/${encodeURIComponent(customerName)}`;
-                                            window.open(url, '_blank');
-                                        }}
+                                        onClick={() => setShowCustomerReportPopup(true)}
                                         disabled={!customerName}
                                         className="flex items-center gap-2 w-full justify-center py-2 rounded-lg border border-purple-500/20 bg-purple-500/5 text-purple-600 hover:bg-purple-500/10 text-xs font-bold transition-colors disabled:opacity-50"
                                     >
@@ -933,6 +942,57 @@ export default function EditDeployedBuoyDialog({
 
                             {/* Tips Overlay */}
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-blue-600/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <FileText className="w-4 h-4" />
+                                Gebruik CTRL+P (of CMD+P) binnen het venster om af te drukken
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Customer Report Popup (Iframe) */}
+            {showCustomerReportPopup && (
+                <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-md flex flex-col p-4 md:p-8 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-5xl mx-auto rounded-2xl shadow-2xl flex flex-col h-full overflow-hidden relative">
+                        {/* Popup Header */}
+                        <div className="p-4 border-b flex items-center justify-between bg-gray-50 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center">
+                                    <Layers className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900">Klant Historiek Rapport</h3>
+                                    <p className="text-xs text-gray-500">{customerName} — {new Date().toLocaleDateString('nl-BE')}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleCustomerPrint}
+                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all shadow-md active:scale-95 font-bold text-xs"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    Afdrukken / PDF
+                                </button>
+                                <button
+                                    onClick={() => setShowCustomerReportPopup(false)}
+                                    className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Iframe Content */}
+                        <div className="flex-1 bg-gray-100 relative group">
+                            <iframe
+                                ref={customerIframeRef}
+                                src={`/rapport/klant/${encodeURIComponent(customerName)}?embedded=true`}
+                                className="w-full h-full border-none bg-white"
+                                title="Customer Report"
+                            />
+
+                            {/* Tips Overlay */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-purple-600/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <FileText className="w-4 h-4" />
                                 Gebruik CTRL+P (of CMD+P) binnen het venster om af te drukken
                             </div>

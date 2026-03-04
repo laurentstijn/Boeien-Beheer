@@ -45,7 +45,7 @@ async function getCustomerReport(customerName: string) {
             color: meta.color || '-',
             customerDeployDate: meta.customer_deploy_date || null,
             customerPickupDate: meta.customer_pickup_date || null,
-            location: meta.location?.lat ? `${meta.location.lat.toFixed(5)}, ${meta.location.lng.toFixed(5)}` : '-',
+            location: meta.location?.lat ? `${meta.location.lat.toFixed(5)}, ${meta.location.lng.toFixed(5)}` : (buoy.location ? buoy.location : '-'),
             logs: (logsData || []).filter(log => log.deployed_buoy_id === buoy.id)
         };
     });
