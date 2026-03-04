@@ -60,7 +60,7 @@ export default function MaintenanceDialog({
     const [replaceSinker, setReplaceSinker] = useState(!!logToEdit?.metadata?.sinker);
     const [replaceShackle, setReplaceShackle] = useState(!!logToEdit?.metadata?.shackle);
     const [replaceZinc, setReplaceZinc] = useState(!!logToEdit?.metadata?.zinc);
-    const [replaceBuoy, setReplaceBuoy] = useState(false); // Can't easily be checked from metadata of standard replacements since it replaces the entire parent asset
+    const [replaceBuoy, setReplaceBuoy] = useState(!!logToEdit?.metadata?.buoy);
 
     // Available Inventory
     const [availableChains, setAvailableChains] = useState<InventoryItem[]>([]);
@@ -75,7 +75,7 @@ export default function MaintenanceDialog({
     const [selectedSinkerId, setSelectedSinkerId] = useState(logToEdit?.metadata?.sinker || '');
     const [selectedShackleId, setSelectedShackleId] = useState(logToEdit?.metadata?.shackle || '');
     const [selectedZincId, setSelectedZincId] = useState(logToEdit?.metadata?.zinc || '');
-    const [selectedBuoyId, setSelectedBuoyId] = useState('');
+    const [selectedBuoyId, setSelectedBuoyId] = useState(logToEdit?.metadata?.buoy || '');
 
     // Old Status: 'broken' (Stuk) or 'lost' (Kwijt)
     const [chainOldStatus, setChainOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.chain_lost ? 'lost' : 'broken');
@@ -83,8 +83,8 @@ export default function MaintenanceDialog({
     const [sinkerOldStatus, setSinkerOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.sinker_lost ? 'lost' : 'broken');
     const [shackleOldStatus, setShackleOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.shackle_lost ? 'lost' : 'broken');
     const [zincOldStatus, setZincOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.zinc_lost ? 'lost' : 'broken');
-    const [buoyOldStatus, setBuoyOldStatus] = useState<'broken' | 'lost'>('broken');
-    const [buoyReplaceReason, setBuoyReplaceReason] = useState('');
+    const [buoyOldStatus, setBuoyOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.buoy_lost ? 'lost' : 'broken');
+    const [buoyReplaceReason, setBuoyReplaceReason] = useState(logToEdit?.metadata?.buoy_replace_reason || '');
 
     // History
     const [history, setHistory] = useState<any[]>([]);
@@ -127,32 +127,23 @@ export default function MaintenanceDialog({
 
     useEffect(() => {
         // Load available stock when replacement is toggled
-        if (replaceChain && availableChains.length === 0) loadStock('Ketting');
-        if (replaceLight && availableLights.length === 0) loadStock('Lamp');
-        if (replaceSinker && availableSinkers.length === 0) loadStock('Steen');
-        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting');
-        if (replaceZinc && availableZincs.length === 0) loadStock('Zinkblok');
-        if (replaceBuoy && availableBuoys.length === 0) loadStock('Boei');
+        if (replaceChain && availableChains.length === 0) loadStock('Ketting', selectedChainId);
+        if (replaceLight && availableLights.length === 0) loadStock('Lamp', selectedLightId);
+        if (replaceSinker && availableSinkers.length === 0) loadStock('Steen', selectedSinkerId);
+        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting', selectedShackleId);
+        if (replaceZinc && availableZincs.length === 0) loadStock('Zinkblok', selectedZincId);
+        if (replaceBuoy && availableBuoys.length === 0) loadStock('Boei', selectedBuoyId);
     }, [replaceChain, replaceLight, replaceSinker, replaceShackle, replaceZinc, replaceBuoy]);
 
-    const loadStock = async (category: string) => {
+    const loadStock = async (category: string, includeAssetId?: string) => {
         try {
-            // Fetch items using the server action/db helper (this needs to be an API call or server action in client component)
-            // For now, let's assume we fetch all items and filter client side or fetch via API
-            // Since getInventoryItems is likely server-side, we need an API endpoint or Server Action.
-            // Let's use a simple fetch to an API route (we might need to create one if not exists)
-            // OR use the existing stock management API if available.
-            // Fallback: We can fetch from /api/inventory if we make one.
-            // Let's stub it with a fetch to our trusty test-db or similar for now, or just assume we have a route.
-            // Actually, we can use the `getInventoryItems` from `db.ts` if this was a server component, but it's client.
-            // Let's add an API route or use a server action. 
-            // For MVP, I'll fetch ALL stock via the existing `getInventoryItems` logic if exposed, 
-            // but since I can't import server code here, I'll assume we have an endpoint `/api/inventory?category=X`.
+            const url = new URL('/api/inventory/available', window.location.origin);
+            url.searchParams.set('category', category);
+            if (includeAssetId) {
+                url.searchParams.set('includeAssetId', includeAssetId);
+            }
 
-            // Let's just create a quick server action or API route for this?
-            // Actually, let's use the browser-side fetch to a new endpoint I'll create: /api/inventory/available
-
-            const response = await fetch(`/api/inventory/available?category=${category}`);
+            const response = await fetch(url.toString());
             if (response.ok) {
                 const data = await response.json();
                 if (category === 'Ketting') setAvailableChains(data);

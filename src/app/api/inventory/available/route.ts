@@ -9,13 +9,14 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const includeAssetId = searchParams.get('includeAssetId');
 
     if (!category) {
         return NextResponse.json({ error: 'Category required' }, { status: 400 });
     }
 
     try {
-        const { data: assets, error } = await supabaseAdmin
+        let query = supabaseAdmin
             .from('assets')
             .select(`
                 id,
@@ -27,9 +28,15 @@ export async function GET(request: Request) {
                     name,
                     category
                 )
-            `)
-            .eq('status', 'in_stock')
-            .order('created_at', { ascending: true });
+            `);
+
+        if (includeAssetId) {
+            query = query.or(`status.eq.in_stock,id.eq.${includeAssetId}`);
+        } else {
+            query = query.eq('status', 'in_stock');
+        }
+
+        const { data: assets, error } = await query.order('created_at', { ascending: true });
 
         if (error) {
             console.error('Error fetching assets:', error);
