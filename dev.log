@@ -1,0 +1,25 @@
+
+> boei-beheer@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://127.51.68.120:3000
+- Environments: .env.local
+- Experiments (use with caution):
+  · serverActions
+
+✓ Starting...
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+✓ Ready in 819ms
+Error updating user: Error: @supabase/auth-js: Expected parameter to be UUID but is not
+    at PATCH (src/app/api/admin/users/[id]/route.ts:11:74)
+   9 |         const { role, zone } = body;
+  10 |
+> 11 |         const { data: { user }, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
+     |                                                                          ^
+  12 |             user_metadata: { role, zone }
+  13 |         });
+  14 |
+ PATCH /api/admin/users/123 500 in 1009ms (compile: 827ms, proxy.ts: 55ms, render: 127ms)
+[?25h

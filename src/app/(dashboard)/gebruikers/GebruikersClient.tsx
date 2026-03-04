@@ -22,6 +22,7 @@ export function GebruikersClient() {
     const [loading, setLoading] = useState(true);
     const [savingId, setSavingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [adminConfirmTarget, setAdminConfirmTarget] = useState<{ id: string, zone: string } | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -58,8 +59,14 @@ export function GebruikersClient() {
             });
 
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Fout bij updaten");
+                let errMessage = "Fout bij updaten";
+                try {
+                    const errData = await res.json();
+                    errMessage = errData.error || errMessage;
+                } catch (parseError) {
+                    errMessage = await res.text() || errMessage;
+                }
+                throw new Error(errMessage);
             }
 
             // Sync lokaal
@@ -174,8 +181,11 @@ export function GebruikersClient() {
                                                 value={role}
                                                 onChange={(e) => {
                                                     const newRole = e.target.value;
-                                                    if (newRole === 'admin' && !confirm('WAARSCHUWING: Een admin kan alles bekijken en beheren (inclusief alle gebruikers en instellingen). Weet je het zeker?')) return;
-                                                    handleUpdate(user.id, { role: newRole, zone: newRole === 'admin' ? '' : zone });
+                                                    if (newRole === 'admin') {
+                                                        setAdminConfirmTarget({ id: user.id, zone });
+                                                    } else {
+                                                        handleUpdate(user.id, { role: newRole, zone });
+                                                    }
                                                 }}
                                             >
                                                 <option value="user">Medewerker Vloot</option>
@@ -202,6 +212,40 @@ export function GebruikersClient() {
                     </table>
                 </div>
             </div>
+
+            {/* Custom Admin Confirm Modal */}
+            {adminConfirmTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-app-surface border border-app-border rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4 text-red-600">
+                                <Shield className="w-6 h-6" />
+                                <h3 className="text-lg font-bold">Admin Rechten Toekennen</h3>
+                            </div>
+                            <p className="text-app-text-secondary text-sm mb-6">
+                                WAARSCHUWING: Een administrator kan alles bekijken en beheren, inclusief alle gebruikers, instellingen en zones. Weet u zeker dat u deze gebruiker volledige rechten wilt geven?
+                            </p>
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setAdminConfirmTarget(null)}
+                                    className="px-4 py-2 text-sm font-medium text-app-text-secondary hover:bg-app-surface-hover rounded-lg transition-colors border border-app-border"
+                                >
+                                    Annuleren
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        handleUpdate(adminConfirmTarget.id, { role: 'admin', zone: '' });
+                                        setAdminConfirmTarget(null);
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                                >
+                                    Ja, Maak Admin
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
