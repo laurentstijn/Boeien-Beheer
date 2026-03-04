@@ -469,16 +469,16 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                             <table className="w-full text-left text-sm text-app-text-secondary border-collapse">
                                 <thead className="bg-app-surface text-app-text-primary font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 shadow-sm border-b border-app-border">
                                     <tr>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('name')}>
+                                        <th className="px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('name')}>
                                             <div className="flex items-center">Boei Naam <SortIcon field="name" /></div>
                                         </th>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('type')}>
+                                        <th className="hidden sm:table-cell px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('type')}>
                                             <div className="flex items-center">Type <SortIcon field="type" /></div>
                                         </th>
-                                        <th className="px-4 py-4">
+                                        <th className="hidden md:table-cell px-4 py-4">
                                             <div className="flex items-center">Onderdelen</div>
                                         </th>
-                                        <th className="px-6 py-4">
+                                        <th className="hidden sm:table-cell px-3 md:px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors w-max space-x-1" onClick={() => toggleSort('maintenance')}>
                                                     <span>Onderhoud</span> <SortIcon field="maintenance" />
@@ -488,13 +488,13 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                 </div>
                                             </div>
                                         </th>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
+                                        <th className="px-3 md:px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('status')}>
                                             <div className="flex items-center">Status <SortIcon field="status" /></div>
                                         </th>
-                                        <th className="px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('extern')}>
+                                        <th className="hidden lg:table-cell px-6 py-4 cursor-pointer hover:bg-app-surface-hover/50 transition-colors" onClick={() => toggleSort('extern')}>
                                             <div className="flex items-center"><Building2 className="w-3 h-3 mr-1 text-blue-400" />Externe Klant <SortIcon field="extern" /></div>
                                         </th>
-                                        <th className="px-6 py-4 text-right">Acties</th>
+                                        <th className="px-3 md:px-6 py-4 text-right">Acties</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-app-border">
@@ -517,26 +517,26 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                         "opacity-50 grayscale-[0.5]": buoy.status === 'Hidden'
                                                     })}
                                                 >
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
+                                                    <td className="px-3 md:px-6 py-3 md:py-4">
+                                                        <div className="flex items-center gap-2">
                                                             <BuoyIcon
                                                                 color={getBuoyDisplayColor(buoy)}
                                                                 type={`${buoy.buoyType?.name || ''} ${buoy.metadata?.boei_soort || ''} ${buoy.metadata?.model || ''} ${buoy.name}`}
                                                                 size="sm"
                                                                 className="shrink-0"
                                                             />
-                                                            <div className="flex flex-col justify-center">
-                                                                <span className="font-bold text-app-text-primary text-base">{buoy.name}</span>
+                                                            <div className="flex flex-col justify-center min-w-0">
+                                                                <span className="font-bold text-app-text-primary text-sm leading-tight truncate">{buoy.name}</span>
                                                             </div>
-                                                            {selectedBuoyId === buoy.id && <MapPin className="w-4 h-4 text-blue-500 animate-bounce" />}
+                                                            {selectedBuoyId === buoy.id && <MapPin className="w-4 h-4 text-blue-500 animate-bounce shrink-0" />}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 font-medium">
+                                                    <td className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4 font-medium">
                                                         <div className="flex flex-col gap-1">
                                                             <span>{(buoy.buoyType?.name && buoy.buoyType.name !== "Onbekend") ? buoy.buoyType.name : (buoy.metadata?.model || buoy.metadata?.boei_soort || "Onbekend")}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="hidden md:table-cell px-4 py-3 md:py-4">
                                                         <div className="flex flex-col gap-0.5">
                                                             {/* Lamp */}
                                                             {buoy.metadata?.light && (
@@ -600,7 +600,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="hidden sm:table-cell px-3 md:px-6 py-3 md:py-4">
                                                         <div className="flex flex-col gap-1 items-start">
                                                             {/* Maintenance Status */}
                                                             {buoy.nextServiceDue && (
@@ -647,7 +647,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-3 md:px-6 py-3 md:py-4">
                                                         {buoy.status === 'Maintenance' ? (
                                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
                                                                 <AlertTriangle className="w-3 h-3" />
@@ -672,7 +672,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="hidden lg:table-cell px-6 py-3 md:py-4">
                                                         {(() => {
                                                             const meta = (buoy as any).metadata;
                                                             if (!meta?.external_customer) return <span className="text-[10px] text-gray-300">—</span>;
@@ -692,7 +692,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                             );
                                                         })()}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right">
+                                                    <td className="px-2 md:px-6 py-3 md:py-4 text-right">
                                                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
                                                             <button
                                                                 onClick={() => setMaintenanceBuoy(buoy)}
@@ -713,7 +713,7 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                                 </tr>
                                                 {selectedBuoyId === buoy.id && (
                                                     <tr className="bg-app-bg/50 border-l-4 border-l-blue-500">
-                                                        <td colSpan={7} className="px-6 py-6 font-geist">
+                                                        <td colSpan={7} className="px-3 md:px-6 py-4 md:py-6 font-geist">
                                                             <div className="flex flex-col gap-6">
                                                                 <MaintenanceHistoryDetails buoy={buoy} onUpdate={handleUpdateBuoy} />
                                                             </div>

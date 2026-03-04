@@ -525,10 +525,10 @@ export default function EditDeployedBuoyDialog({
     };
 
     return (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-app-surface w-full max-w-md rounded-2xl border border-app-border shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 lg:max-w-4xl lg:h-[80vh] flex flex-col lg:flex-row">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+            <div className="bg-app-surface w-full max-w-md rounded-2xl border border-app-border shadow-2xl animate-in fade-in zoom-in duration-200 lg:max-w-4xl lg:h-[80vh] flex flex-col lg:flex-row overflow-hidden" style={{ maxHeight: '90dvh' }}>
                 {/* Left Column: Main Form */}
-                <div className="flex flex-col h-full lg:w-1/2 overflow-hidden border-r border-app-border">
+                <div className="flex flex-col min-h-0 lg:w-1/2 overflow-hidden border-b lg:border-b-0 lg:border-r border-app-border flex-1 lg:flex-none">
                     <div className="p-6 border-b border-app-border flex items-center justify-between bg-app-surface shrink-0">
                         <div>
                             <h2 className="text-xl font-bold text-app-text-primary">Boei Aanpassen</h2>
@@ -540,7 +540,7 @@ export default function EditDeployedBuoyDialog({
                     </div>
 
                     {/* Form */}
-                    <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                    <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                         <div>
                             <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-wider mb-1.5">Naam</label>
                             <input

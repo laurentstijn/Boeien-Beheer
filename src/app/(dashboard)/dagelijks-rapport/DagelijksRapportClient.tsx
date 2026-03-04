@@ -212,10 +212,10 @@ export function DagelijksRapportClient() {
                             <table className="w-full text-left text-sm print:text-xs">
                                 <thead className="bg-app-bg text-app-text-secondary border-b border-app-border print:bg-transparent print:text-black">
                                     <tr>
-                                        <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Boei Naam</th>
-                                        <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2 w-48">Uitgevoerd door</th>
-                                        <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Acties & Vervangingen</th>
-                                        <th className="px-6 py-3 font-bold uppercase tracking-wider print:px-2">Status Na Onderhoud</th>
+                                        <th className="px-3 md:px-6 py-3 font-bold uppercase tracking-wider print:px-2">Boei Naam</th>
+                                        <th className="hidden sm:table-cell px-6 py-3 font-bold uppercase tracking-wider print:px-2 w-48">Uitgevoerd door</th>
+                                        <th className="px-3 md:px-6 py-3 font-bold uppercase tracking-wider print:px-2">Acties & Vervangingen</th>
+                                        <th className="px-3 md:px-6 py-3 font-bold uppercase tracking-wider print:px-2">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-app-border print:divide-gray-300">
@@ -232,16 +232,16 @@ export function DagelijksRapportClient() {
 
                                                 return (
                                                     <tr key={log.id} className="hover:bg-app-surface-hover print:hover:bg-transparent">
-                                                        <td className="px-6 py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top">
+                                                        <td className="px-3 md:px-6 py-3 md:py-4 font-bold text-app-text-primary print:text-black print:px-2 print:py-2 align-top">
                                                             {log.deployed_buoys?.name || 'Onbekend'}
                                                         </td>
-                                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top">
+                                                        <td className="hidden sm:table-cell px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top">
                                                             {log.technician || 'Onbekend'}
                                                             <div className="text-[10px] text-app-text-secondary/60 print:text-gray-500">
                                                                 {new Date(log.service_date).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top">
+                                                        <td className="px-3 md:px-6 py-3 md:py-4 text-app-text-secondary print:text-black print:px-2 print:py-2 align-top">
                                                             {log.description ? (
                                                                 <div className="mb-2 italic text-app-text-primary print:text-black">{log.description}</div>
                                                             ) : <div className="mb-2 italic text-app-text-secondary/50 print:text-gray-500">Geen algemene notities</div>}
@@ -273,7 +273,7 @@ export function DagelijksRapportClient() {
                                                                 </div>
                                                             )}
                                                         </td>
-                                                        <td className="px-6 py-4 print:px-2 print:py-2 align-top">
+                                                        <td className="px-3 md:px-6 py-3 md:py-4 print:px-2 print:py-2 align-top">
                                                             {metadata.status === 'Niet OK' || metadata.status === 'Maintenance' ? (
                                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border print:bg-transparent bg-red-100 text-red-700 border-red-200 print:border-red-500 print:text-red-800">
                                                                     <AlertTriangle className="w-3 h-3 text-red-600 print:text-red-800" />

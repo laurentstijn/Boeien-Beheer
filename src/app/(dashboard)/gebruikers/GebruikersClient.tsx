@@ -132,11 +132,11 @@ export function GebruikersClient() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-app-bg text-app-text-secondary border-b border-app-border">
                             <tr>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider">Account / E-mailadres</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider">Sectie / Zone</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider">Rol</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider">Laatst Ingelogd</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-right">Beheer</th>
+                                <th className="px-3 md:px-6 py-4 font-bold uppercase tracking-wider">Account / E-mailadres</th>
+                                <th className="px-3 md:px-6 py-4 font-bold uppercase tracking-wider">Zone</th>
+                                <th className="px-3 md:px-6 py-4 font-bold uppercase tracking-wider">Rol</th>
+                                <th className="hidden md:table-cell px-6 py-4 font-bold uppercase tracking-wider">Laatst Ingelogd</th>
+                                <th className="px-3 md:px-6 py-4 font-bold uppercase tracking-wider text-right">Beheer</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-app-border">
@@ -147,35 +147,35 @@ export function GebruikersClient() {
 
                                 return (
                                     <tr key={user.id} className="hover:bg-app-surface-hover transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-app-text-primary flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-app-text-secondary" />
-                                                {user.email}
+                                        <td className="px-3 md:px-6 py-3 md:py-4">
+                                            <div className="font-bold text-app-text-primary flex items-center gap-2 text-sm">
+                                                <Users className="w-4 h-4 text-app-text-secondary shrink-0" />
+                                                <span className="break-all">{user.email}</span>
                                             </div>
-                                            <div className="text-[10px] text-app-text-secondary mt-1 font-mono">
+                                            <div className="text-[10px] text-app-text-secondary mt-1 font-mono hidden sm:block">
                                                 Aangemaakt: {new Date(user.created_at).toLocaleDateString('nl-BE')}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 md:px-6 py-3 md:py-4">
                                             <select
                                                 disabled={isSaving || role === 'admin'}
-                                                className="bg-app-bg border border-app-border rounded-lg px-3 py-1.5 text-app-text-primary disabled:opacity-50 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full"
+                                                className="bg-app-bg border border-app-border rounded-lg px-2 py-1.5 text-app-text-primary disabled:opacity-50 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full"
                                                 value={zone}
                                                 onChange={(e) => handleUpdate(user.id, { zone: e.target.value })}
                                             >
-                                                <option value="" disabled>Kies een zone...</option>
+                                                <option value="" disabled>Kies zone...</option>
                                                 <option value="zone_zeeschelde">Zeeschelde</option>
                                                 <option value="zone_zeetijger">Zeetijger</option>
                                             </select>
                                             {(role !== 'admin' && !zone) && (
-                                                <div className="text-[10px] text-red-500 mt-1 font-bold">⚠️ Toegang geblokkeerd: zone ontbreekt</div>
+                                                <div className="text-[10px] text-red-500 mt-1 font-bold">⚠️ Zone ontbreekt</div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 md:px-6 py-3 md:py-4">
                                             <select
                                                 disabled={isSaving}
                                                 className={clsx(
-                                                    "border rounded-lg px-3 py-1.5 font-bold disabled:opacity-50 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full",
+                                                    "border rounded-lg px-2 py-1.5 font-bold disabled:opacity-50 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-full",
                                                     role === 'admin' ? "bg-red-50 text-red-700 border-red-200" : "bg-app-bg text-app-text-primary border-app-border"
                                                 )}
                                                 value={role}
@@ -188,14 +188,14 @@ export function GebruikersClient() {
                                                     }
                                                 }}
                                             >
-                                                <option value="user">Medewerker Vloot</option>
-                                                <option value="admin">Administrator / Beheer</option>
+                                                <option value="user">Medewerker</option>
+                                                <option value="admin">Administrator</option>
                                             </select>
                                         </td>
-                                        <td className="px-6 py-4 text-app-text-secondary text-xs">
+                                        <td className="hidden md:table-cell px-6 py-4 text-app-text-secondary text-xs">
                                             {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('nl-BE') : 'Nog nooit'}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-3 md:px-6 py-3 md:py-4 text-right">
                                             <button
                                                 onClick={() => handleDelete(user.id, user.email)}
                                                 disabled={isSaving}
