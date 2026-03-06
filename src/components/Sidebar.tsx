@@ -30,6 +30,8 @@ import {
 import clsx from "clsx";
 import { useSupabase } from "@/components/SupabaseProvider";
 import CoordinateCalculator from "./CoordinateCalculator";
+import { HelpPopup } from "./HelpPopup";
+import { HelpCircle } from "lucide-react";
 
 
 interface SidebarProps {
@@ -44,6 +46,7 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
     const isAdmin = session?.user?.user_metadata?.role === 'admin';
     const [openGroupTitle, setOpenGroupTitle] = useState<string | null>("Stock & Inventaris");
     const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     const toggleGroup = (title: string | null) => {
         if (!title) return;
@@ -219,6 +222,15 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
                         <Calculator className="w-4 h-4" />
                         Coördinaten Omzetten
                     </button>
+
+                    <button
+                        onClick={() => setIsHelpOpen(true)}
+                        className="w-full bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-900/10 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm border border-blue-200 dark:border-blue-800 text-xs"
+                    >
+                        <HelpCircle className="w-4 h-4" />
+                        Hoe werkt de app?
+                    </button>
+                    
                     <div className="pt-2 pb-1 text-center text-[10px] text-app-text-secondary/40 font-medium tracking-widest uppercase">
                         @laurentstijn
                     </div>
@@ -243,6 +255,8 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
                     </div>
                 </div>
             )}
+
+            <HelpPopup isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         </>
     );
 }
