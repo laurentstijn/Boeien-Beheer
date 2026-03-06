@@ -21,11 +21,12 @@ interface AssetPickerProps {
     items: any[];
     value: string;
     onChange: (id: string) => void;
+    onAddNew?: () => void;
     placeholder: string;
     className?: string;
 }
 
-export default function AssetPicker({ items, value, onChange, placeholder, className }: AssetPickerProps) {
+export default function AssetPicker({ items, value, onChange, onAddNew, placeholder, className }: AssetPickerProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
@@ -124,6 +125,20 @@ export default function AssetPicker({ items, value, onChange, placeholder, class
                         }) : (
                             <div className="px-3 py-4 text-center text-xs text-app-text-secondary italic">
                                 Geen resultaten gevonden
+                            </div>
+                        )}
+                        {onAddNew && (
+                            <div className="p-2 border-t border-app-border mt-1 bg-app-surface-hover">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        onAddNew();
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg flex items-center gap-2 transition-colors"
+                                >
+                                    + Nieuw onderdeel aanmaken
+                                </button>
                             </div>
                         )}
                     </div>

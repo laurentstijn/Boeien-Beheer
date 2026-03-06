@@ -9,6 +9,7 @@ import { LightCharacterInput } from '@/components/LightCharacterInput';
 // Generate URLs for waterinfo iframes
 import { getInventoryItems } from '@/lib/db';
 import AssetPicker from './AssetPicker';
+import { AssetDialog } from './AssetDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import clsx from 'clsx';
 
@@ -40,6 +41,10 @@ export default function MaintenanceDialog({
     const [lightTested, setLightTested] = useState(logToEdit?.metadata?.light_tested || false);
     const [isSaving, setIsSaving] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+    // New Part Creation State
+    const [creationCategory, setCreationCategory] = useState<string | null>(null);
+    const [creationItemTypes, setCreationItemTypes] = useState<any[]>([]);
 
     // Tide Data State
     const [tideData, setTideData] = useState<any>(null);
@@ -155,6 +160,22 @@ export default function MaintenanceDialog({
             }
         } catch (error) {
             console.error(`Failed to load ${category} stock`, error);
+        }
+    };
+
+    const openCreateDialog = async (category: string) => {
+        try {
+            const response = await fetch(`/api/inventory/types?category=${category}`);
+            if (response.ok) {
+                const types = await response.json();
+                setCreationItemTypes(types);
+                setCreationCategory(category);
+            } else {
+                alert(`Kon item types niet laden voor ${category}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert(`Kon item types niet ophalen.`);
         }
     };
 
@@ -535,7 +556,7 @@ export default function MaintenanceDialog({
 
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Boei uit Stock</label>
-                                            <AssetPicker items={availableBuoys} value={selectedBuoyId} onChange={setSelectedBuoyId} placeholder="Selecteer nieuwe boei..." />
+                                            <AssetPicker items={availableBuoys} value={selectedBuoyId} onChange={setSelectedBuoyId} onAddNew={() => openCreateDialog('Boei')} placeholder="Selecteer nieuwe boei..." />
                                         </div>
                                     </div>
                                 )}
@@ -590,6 +611,7 @@ export default function MaintenanceDialog({
                                                 items={availableChains}
                                                 value={selectedChainId}
                                                 onChange={setSelectedChainId}
+                                                onAddNew={() => openCreateDialog('Ketting')}
                                                 placeholder="Selecteer ketting..."
                                             />
                                         </div>
@@ -646,6 +668,7 @@ export default function MaintenanceDialog({
                                                 items={availableLights}
                                                 value={selectedLightId}
                                                 onChange={setSelectedLightId}
+                                                onAddNew={() => openCreateDialog('Lamp')}
                                                 placeholder="Selecteer lamp..."
                                             />
                                         </div>
@@ -702,6 +725,7 @@ export default function MaintenanceDialog({
                                                 items={availableSinkers}
                                                 value={selectedSinkerId}
                                                 onChange={setSelectedSinkerId}
+                                                onAddNew={() => openCreateDialog('Steen')}
                                                 placeholder="Selecteer steen..."
                                             />
                                         </div>
@@ -718,7 +742,7 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <span className="font-medium text-app-text-primary">Sluiting Vervangen</span>
-                                            <p className="text-xs text-app-text-secondary">Schakels / D-sluitingen / G-haken</p>
+                                            <p className="text-xs text-app-text-secondary">Schakels / D-sluitingen / G-haken / Breidels</p>
                                         </div>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
@@ -741,7 +765,7 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Sluiting uit Stock</label>
-                                            <AssetPicker items={availableShackles} value={selectedShackleId} onChange={setSelectedShackleId} placeholder="Selecteer sluiting..." />
+                                            <AssetPicker items={availableShackles} value={selectedShackleId} onChange={setSelectedShackleId} onAddNew={() => openCreateDialog('Sluiting')} placeholder="Selecteer sluiting..." />
                                         </div>
                                     </div>
                                 )}
@@ -779,7 +803,7 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuw Zinkblok uit Stock</label>
-                                            <AssetPicker items={availableZincs} value={selectedZincId} onChange={setSelectedZincId} placeholder="Selecteer zinkblok..." />
+                                            <AssetPicker items={availableZincs} value={selectedZincId} onChange={setSelectedZincId} onAddNew={() => openCreateDialog('Zinkblok')} placeholder="Selecteer zinkblok..." />
                                         </div>
                                     </div>
                                 )}
@@ -899,6 +923,19 @@ export default function MaintenanceDialog({
                 confirmLabel="Ja, opslaan"
                 cancelLabel="Terug"
                 variant="info"
+            />
+
+            <AssetDialog
+                isOpen={!!creationCategory}
+                onClose={() => {
+                    if (creationCategory) {
+                        loadStock(creationCategory);
+                    }
+                    setCreationCategory(null);
+                }}
+                mode="create"
+                category={creationCategory || ''}
+                itemTypes={creationItemTypes}
             />
         </div>
     );
