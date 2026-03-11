@@ -389,50 +389,40 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
                                             {(selectedItemId === 'custom' || !selectedItemId) && selectedAutoName && (
                                                 <input type="hidden" name="customItemName" value={selectedAutoName} />
                                             )}
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
-                                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer flex items-center justify-between"
+                                            <div className="flex items-center gap-3">
+                                                {selectedColor ? (
+                                                    <div className="w-[48px] h-[48px] flex items-center justify-center flex-shrink-0 bg-app-bg border border-app-border rounded-xl">
+                                                        <BuoyIcon color={selectedRawColor} size="md" />
+                                                    </div>
+                                                ) : null}
+                                                <select
+                                                    className="w-full bg-app-bg border border-app-border rounded-xl px-4 py-2.5 text-app-text-primary focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                                                    value={selectedItemId === 'custom' ? `custom-${selectedRawColor}` : selectedItemId}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const isCustom = val.startsWith('custom-');
+                                                        const searchId = isCustom ? 'custom' : val;
+                                                        
+                                                        const item = variants.find(x => x.id === searchId && (!isCustom || `custom-${x.rawColor}` === val));
+                                                        
+                                                        if (item) {
+                                                            setSelectedItemId(item.id);
+                                                            setSelectedColor(item.color);
+                                                            setSelectedRawColor(item.rawColor);
+                                                            if (item.autoName) setSelectedAutoName(item.autoName);
+                                                        }
+                                                    }}
                                                 >
-                                                    <div className="flex items-center gap-3">
-                                                        {selectedColor ? (
-                                                            <>
-                                                                <div className="w-6 h-6 flex-shrink-0">
-                                                                    <BuoyIcon color={selectedRawColor} size="md" />
-                                                                </div>
-                                                                <span>{selectedColor}</span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-gray-500">Selecteer kleur...</span>
-                                                        )}
-                                                    </div>
-                                                    <ChevronDown className={clsx("w-4 h-4 text-app-text-secondary transition-transform", isColorDropdownOpen && "rotate-180")} />
-                                                </button>
-
-                                                {isColorDropdownOpen && (
-                                                    <div className="absolute z-10 w-full mt-1 bg-app-surface border border-app-border rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                                        {variants.map((item, idx) => (
-                                                            <button
-                                                                key={item.id === 'custom' ? `custom-${idx}` : item.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setSelectedItemId(item.id);
-                                                                    setSelectedColor(item.color);
-                                                                    setSelectedRawColor(item.rawColor);
-                                                                    if (item.autoName) setSelectedAutoName(item.autoName);
-                                                                    setIsColorDropdownOpen(false);
-                                                                }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-app-surface-hover flex items-center gap-3 transition-colors border-b border-app-border/50 last:border-0"
-                                                            >
-                                                                <div className="w-6 h-6 flex-shrink-0">
-                                                                    <BuoyIcon color={item.rawColor} size="md" />
-                                                                </div>
-                                                                <span className="font-medium text-app-text-primary">{item.color}</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                    <option value="" disabled>Selecteer kleur...</option>
+                                                    {variants.map((item) => {
+                                                        const uniqueVal = item.id === 'custom' ? `custom-${item.rawColor}` : item.id;
+                                                        return (
+                                                            <option key={uniqueVal} value={uniqueVal}>
+                                                                {item.color}
+                                                            </option>
+                                                        );
+                                                    })}
+                                                </select>
                                             </div>
                                         </div>
                                     );
