@@ -77,7 +77,7 @@ export function SearchableSelect({
             </button>
 
             {open && !disabled && (
-                <div className="absolute z-[100] w-full mt-1 bg-app-surface border border-app-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+                <div className="absolute z-[100] min-w-full w-max max-w-[350px] mt-1 bg-app-surface border border-app-border rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
                     <div className="p-2 border-b border-app-border bg-app-bg/50 flex items-center gap-2">
                         <Search className="w-4 h-4 text-app-text-secondary shrink-0" />
                         <input
@@ -111,7 +111,7 @@ export function SearchableSelect({
                                 )}
                             >
                                 {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-                                <span className="truncate">{opt.label}</span>
+                                <span className="break-words whitespace-normal leading-tight py-0.5">{opt.label}</span>
                             </button>
                         )) : (
                             <div className="px-3 py-4 text-center text-sm text-app-text-secondary">

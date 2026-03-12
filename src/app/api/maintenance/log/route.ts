@@ -140,9 +140,74 @@ export async function POST(req: Request) {
             const result = await swapComponent(replacements.sinker, replacements.sinker_lost, 'sinker', 'Steen');
             if (result) newMetadata.sinker = result;
         }
-        if (replacements.shackle) {
-            const result = await swapComponent(replacements.shackle, replacements.shackle_lost, 'shackle', 'Sluiting');
-            if (result) newMetadata.shackle = result;
+        if (replacements.shackles && Array.isArray(replacements.shackles)) {
+            let currentShackles = Array.isArray(buoyData?.metadata?.shackles) ? [...buoyData.metadata.shackles] : [];
+            if (buoyData?.metadata?.shackle && currentShackles.length === 0) {
+                currentShackles.push(buoyData.metadata.shackle);
+            }
+
+            const newShackles = [];
+            const newReplacementNames = [];
+
+            for (const newShackle of replacements.shackles) {
+                if (!newShackle.assetId) continue;
+                
+                const { data: availableAssets } = await supabaseAdmin
+                    .from('assets')
+                    .select('id, items(name, specs)')
+                    .eq('id', newShackle.assetId)
+                    .limit(1)
+                    .single();
+
+                if (availableAssets) {
+                    const newAssetId = availableAssets.id;
+                    const newItem: any = availableAssets.items;
+                    newReplacementNames.push(newItem.name);
+
+                    const oldAssetToReplace = currentShackles.shift();
+                    if (oldAssetToReplace?.asset_id) {
+                        const isLost = newShackle.oldStatus === 'lost';
+                        await supabaseAdmin.from('assets').update({
+                            status: isLost ? 'lost' : 'maintenance',
+                            location: isLost ? 'Verloren' : 'Magazijn (Onderhoud)',
+                            deployment_id: null
+                        }).eq('id', oldAssetToReplace.asset_id);
+                    }
+
+                    await supabaseAdmin.from('assets').update({
+                        status: 'deployed',
+                        location: `Op zee (${buoyId})`,
+                        deployment_id: buoyId
+                    }).eq('id', newAssetId);
+
+                    newShackles.push({
+                        ...(newItem.specs || {}),
+                        type: newItem.name,
+                        asset_id: newAssetId
+                    });
+                }
+            }
+
+            // Any remaining old shackles that weren't "replaced" 1-to-1 should be removed and marked for maintenance.
+            for (const leftover of currentShackles) {
+                if (leftover?.asset_id) {
+                    await supabaseAdmin.from('assets').update({
+                        status: 'maintenance',
+                        location: 'Magazijn (Onderhoud)',
+                        deployment_id: null
+                    }).eq('id', leftover.asset_id);
+                }
+            }
+
+            if (newShackles.length > 0) {
+                newMetadata.shackles = newShackles;
+            } else {
+                delete newMetadata.shackles;
+            }
+            delete newMetadata.shackle;
+            if (newReplacementNames.length > 0) {
+                replacementNames['shackles'] = newReplacementNames.join(', ');
+            }
         }
         if (replacements.zinc) {
             const result = await swapComponent(replacements.zinc, replacements.zinc_lost, 'zinc', 'Zinkblok');

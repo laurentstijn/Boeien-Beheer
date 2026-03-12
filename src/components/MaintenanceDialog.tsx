@@ -78,7 +78,22 @@ export default function MaintenanceDialog({
     const [selectedChainId, setSelectedChainId] = useState(logToEdit?.metadata?.chain || '');
     const [selectedLightId, setSelectedLightId] = useState(logToEdit?.metadata?.light || '');
     const [selectedSinkerId, setSelectedSinkerId] = useState(logToEdit?.metadata?.sinker || '');
-    const [selectedShackleId, setSelectedShackleId] = useState(logToEdit?.metadata?.shackle || '');
+    const [shackleReplacements, setShackleReplacements] = useState<{ id: string, assetId: string, oldStatus: 'broken' | 'lost' }[]>(() => {
+        if (logToEdit?.metadata?.shackles && Array.isArray(logToEdit.metadata.shackles)) {
+            return logToEdit.metadata.shackles.map((s: any) => ({
+                id: Math.random().toString(36).substring(7),
+                assetId: s.asset_id || s.id || '',
+                oldStatus: s.lost ? 'lost' : 'broken'
+            }));
+        } else if (logToEdit?.metadata?.shackle) {
+            return [{
+                id: Math.random().toString(36).substring(7),
+                assetId: logToEdit.metadata.shackle || '',
+                oldStatus: logToEdit.metadata.shackle_lost ? 'lost' : 'broken'
+            }];
+        }
+        return [{ id: Math.random().toString(36).substring(7), assetId: '', oldStatus: 'broken' }];
+    });
     const [selectedZincId, setSelectedZincId] = useState(logToEdit?.metadata?.zinc || '');
     const [selectedBuoyId, setSelectedBuoyId] = useState(logToEdit?.metadata?.buoy || '');
 
@@ -86,7 +101,6 @@ export default function MaintenanceDialog({
     const [chainOldStatus, setChainOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.chain_lost ? 'lost' : 'broken');
     const [lightOldStatus, setLightOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.light_lost ? 'lost' : 'broken');
     const [sinkerOldStatus, setSinkerOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.sinker_lost ? 'lost' : 'broken');
-    const [shackleOldStatus, setShackleOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.shackle_lost ? 'lost' : 'broken');
     const [zincOldStatus, setZincOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.zinc_lost ? 'lost' : 'broken');
     const [buoyOldStatus, setBuoyOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.buoy_lost ? 'lost' : 'broken');
     const [buoyReplaceReason, setBuoyReplaceReason] = useState(logToEdit?.metadata?.buoy_replace_reason || '');
@@ -135,7 +149,7 @@ export default function MaintenanceDialog({
         if (replaceChain && availableChains.length === 0) loadStock('Ketting', selectedChainId);
         if (replaceLight && availableLights.length === 0) loadStock('Lamp', selectedLightId);
         if (replaceSinker && availableSinkers.length === 0) loadStock('Steen', selectedSinkerId);
-        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting', selectedShackleId);
+        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting', shackleReplacements[0]?.assetId);
         if (replaceZinc && availableZincs.length === 0) loadStock('Zinkblok', selectedZincId);
         if (replaceBuoy && availableBuoys.length === 0) loadStock('Boei', selectedBuoyId);
     }, [replaceChain, replaceLight, replaceSinker, replaceShackle, replaceZinc, replaceBuoy]);
@@ -232,14 +246,13 @@ export default function MaintenanceDialog({
                     chain: replaceChain ? selectedChainId : null,
                     light: replaceLight ? selectedLightId : null,
                     sinker: replaceSinker ? selectedSinkerId : null,
-                    shackle: replaceShackle ? selectedShackleId : null,
+                    shackles: replaceShackle ? shackleReplacements : null,
                     zinc: replaceZinc ? selectedZincId : null,
                     buoy_lost: buoyOldStatus === 'lost',
                     buoy_replace_reason: replaceBuoy ? buoyReplaceReason : null,
                     chain_lost: chainOldStatus === 'lost',
                     light_lost: lightOldStatus === 'lost',
                     sinker_lost: sinkerOldStatus === 'lost',
-                    shackle_lost: shackleOldStatus === 'lost',
                     zinc_lost: zincOldStatus === 'lost',
                     buoy_cleaned: buoyCleaned,
                     light_tested: lightTested
@@ -751,22 +764,77 @@ export default function MaintenanceDialog({
                                     </label>
                                 </div>
                                 {replaceShackle && (
-                                    <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button onClick={() => setShackleOldStatus('broken')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", shackleOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button onClick={() => setShackleOldStatus('lost')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", shackleOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Kwijt (Verloren)
-                                                </button>
+                                    <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {shackleReplacements.map((shackle, index) => (
+                                            <div key={shackle.id} className="relative p-4 rounded-xl border border-app-border bg-app-surface/50 shadow-sm group">
+                                                {shackleReplacements.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShackleReplacements(prev => prev.filter(s => s.id !== shackle.id))}
+                                                        className="absolute top-2 right-2 p-1.5 text-app-text-secondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="flex flex-col gap-2">
+                                                        <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
+                                                        <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newReps = [...shackleReplacements];
+                                                                    newReps[index].oldStatus = 'broken';
+                                                                    setShackleReplacements(newReps);
+                                                                }}
+                                                                className={clsx(
+                                                                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                                                                    shackle.oldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
+                                                                )}
+                                                            >
+                                                                Stuk (Onderhoud)
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newReps = [...shackleReplacements];
+                                                                    newReps[index].oldStatus = 'lost';
+                                                                    setShackleReplacements(newReps);
+                                                                }}
+                                                                className={clsx(
+                                                                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                                                                    shackle.oldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
+                                                                )}
+                                                            >
+                                                                Kwijt (Verloren)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Sluiting uit Stock</label>
+                                                        <AssetPicker
+                                                            items={availableShackles}
+                                                            value={shackle.assetId}
+                                                            onChange={(newId) => {
+                                                                const newReps = [...shackleReplacements];
+                                                                newReps[index].assetId = newId;
+                                                                setShackleReplacements(newReps);
+                                                            }}
+                                                            onAddNew={() => openCreateDialog('Sluiting')}
+                                                            placeholder="Selecteer sluiting..."
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Sluiting uit Stock</label>
-                                            <AssetPicker items={availableShackles} value={selectedShackleId} onChange={setSelectedShackleId} onAddNew={() => openCreateDialog('Sluiting')} placeholder="Selecteer sluiting..." />
-                                        </div>
+                                        ))}
+                                        
+                                        <button
+                                            type="button"
+                                            onClick={() => setShackleReplacements(prev => [...prev, { id: Math.random().toString(36).substring(7), assetId: '', oldStatus: 'broken' }])}
+                                            className="w-full py-2 border-2 border-dashed border-app-border/70 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 text-app-text-secondary hover:text-blue-600 dark:hover:text-blue-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <span className="text-lg leading-none">+</span> Voeg nog een sluiting toe
+                                        </button>
                                     </div>
                                 )}
                             </div>
