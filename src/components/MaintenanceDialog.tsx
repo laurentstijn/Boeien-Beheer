@@ -82,8 +82,8 @@ export default function MaintenanceDialog({
         if (logToEdit?.metadata?.shackles && Array.isArray(logToEdit.metadata.shackles)) {
             return logToEdit.metadata.shackles.map((s: any) => ({
                 id: Math.random().toString(36).substring(7),
-                assetId: s.asset_id || s.id || '',
-                oldStatus: s.lost ? 'lost' : 'broken'
+                assetId: s.assetId || s.asset_id || '',
+                oldStatus: s.oldStatus || (s.lost ? 'lost' : 'broken')
             }));
         } else if (logToEdit?.metadata?.shackle) {
             return [{
