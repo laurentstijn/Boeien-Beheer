@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useActionState, Fragment } from 'react';
 // import { useFormState } from 'react-dom'; // DEPRECATED in React 19
-import { createAsset, updateAsset } from '@/app/actions';
+import { createAsset, updateAsset, getActiveZoneContextAction } from '@/app/actions';
 import { X, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { BuoyIcon } from './BuoyIcon';
@@ -57,6 +57,13 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
     onClose: () => void;
 }) {
     const [state, formAction, isPending] = useActionState(mode === 'create' ? createAsset : updateAsset, initialState);
+
+    const [isGlobal, setIsGlobal] = useState(false);
+    useEffect(() => {
+        getActiveZoneContextAction().then(ctx => {
+            setIsGlobal(ctx.isGlobal);
+        });
+    }, []);
 
     // Use the passed formCategory
 
@@ -794,7 +801,25 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
                 )
             }
 
-            <div>
+            {isGlobal && (
+                <div className="space-y-4 pt-4 border-t border-app-border">
+                    <label className="text-xs font-bold text-app-text-secondary uppercase tracking-wider mb-2 block">
+                        Bestemmingszone (Verplicht in &apos;Alles&apos; overzicht)
+                    </label>
+                    <select
+                        name="zone_override"
+                        required
+                        className="w-full bg-app-surface text-app-text-primary px-4 py-3 rounded-xl border border-app-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                        defaultValue={asset?.zone || ""}
+                    >
+                        <option value="" disabled>Kies een zone...</option>
+                        <option value="zone_zeeschelde">Zeeschelde</option>
+                        <option value="zone_zeetijger">Zeetijger</option>
+                    </select>
+                </div>
+            )}
+
+            <div className={isGlobal ? "mt-4" : ""}>
                 <label className="block text-sm font-semibold text-app-text-secondary mb-1.5 ml-1">Notities</label>
                 <textarea
                     name="notes"

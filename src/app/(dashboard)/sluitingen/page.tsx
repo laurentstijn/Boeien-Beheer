@@ -8,6 +8,7 @@ export default async function SluitingenPage() {
     const assets = await getAssets("Sluiting");
     const types = await getItemTypes("Sluiting");
     const buoys = await getDeployedBuoys();
+    console.log("SluitingenPage Debug:", { assetsLength: assets.length, typesLength: types.length });
 
     return (
         <div className="space-y-8">

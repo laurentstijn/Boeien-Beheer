@@ -444,7 +444,11 @@ export function LampInventory({ assets, itemTypes, buoys = [] }: LampInventoryPr
                                                                             const statusInfo = getStatusInfo(asset.status);
                                                                             const StatusIcon = statusInfo.icon;
                                                                             const serialNumber = asset.metadata?.serialNumber || asset.metadata?.serial_number || asset.metadata?.article_number || asset.id.slice(0, 8);
-                                                                            const specificModel = asset.item?.name || 'Onbekend Lamp Model';
+                                                                            const brandName = asset.metadata?.brand || asset.metadata?.manufacturer || '';
+                                                                            const typeName = asset.item?.name || asset.metadata?.type || asset.metadata?.model || '';
+                                                                            const specificModel = brandName && typeName && !typeName.toLowerCase().includes(brandName.toLowerCase())
+                                                                                ? `${brandName} ${typeName}`
+                                                                                : (typeName || brandName || 'Onbekend Lamp Model');
 
                                                                             return (
                                                                                 <tr key={asset.id} className="hover:bg-app-surface-hover/50 group/child transition-colors">

@@ -7,6 +7,7 @@ import { SearchableSelect } from '@/components/SearchableSelect';
 import React, { useState, useRef, useEffect } from 'react';
 import { DeployedBuoy } from '@/lib/data';
 import clsx from 'clsx';
+import { AssetDialog } from '@/components/AssetDialog';
 
 const SOORT_OPTIONS = [
     { value: 'spits', label: 'Spits (Groen)', color: 'groen' },
@@ -105,6 +106,39 @@ export default function EditDeployedBuoyDialog({
     onUpdate,
     onDelete
 }: EditDeployedBuoyDialogProps) {
+    const [localAvailableLamps, setLocalAvailableLamps] = useState(availableLamps);
+    const [localAvailableChains, setLocalAvailableChains] = useState(availableChains || []);
+    const [localAvailableStones, setLocalAvailableStones] = useState(availableStones || []);
+
+    const [creationCategory, setCreationCategory] = useState<string | null>(null);
+    const [creationItemTypes, setCreationItemTypes] = useState<any[]>([]);
+
+    const handleOpenCreatePopup = async (category: string) => {
+        setCreationCategory(category);
+        try {
+            const res = await fetch(`/api/inventory/item-types?category=${category}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCreationItemTypes(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch item types", err);
+        }
+    };
+
+    const loadStock = async (category: string) => {
+        try {
+            const res = await fetch(`/api/inventory/available?category=${category}`);
+            if (!res.ok) throw new Error('Failed to fetch stock');
+            const data = await res.json();
+            if (category === 'Lamp') setLocalAvailableLamps(data);
+            if (category === 'Ketting') setLocalAvailableChains(data);
+            if (category === 'Steen') setLocalAvailableStones(data);
+        } catch (err) {
+            console.error('Error loading stock for', category, err);
+        }
+    };
+
     const [name, setName] = useState(buoy.name);
     const [lat, setLat] = useState(buoy.location.lat.toString());
     const [lng, setLng] = useState(buoy.location.lng.toString());
@@ -249,9 +283,9 @@ export default function EditDeployedBuoyDialog({
     };
 
     const getAvailableComponents = () => {
-        if (activeTab === 'lamp') return availableLamps;
-        if (activeTab === 'chain') return availableChains;
-        if (activeTab === 'stone') return availableStones;
+        if (activeTab === 'lamp') return localAvailableLamps;
+        if (activeTab === 'chain') return localAvailableChains;
+        if (activeTab === 'stone') return localAvailableStones;
         return [];
     };
 
@@ -431,6 +465,10 @@ export default function EditDeployedBuoyDialog({
                     onChange={setSelectedComponentId}
                     placeholder={`Selecteer ${activeTab === 'lamp' ? 'lamp' : activeTab === 'chain' ? 'ketting' : 'steen'}...`}
                     className="mb-1"
+                    onAddNew={() => {
+                        const catMap: Record<string, string> = { 'lamp': 'Lamp', 'chain': 'Ketting', 'stone': 'Steen' };
+                        handleOpenCreatePopup(catMap[activeTab]);
+                    }}
                 />
 
                 <button
@@ -1000,6 +1038,19 @@ export default function EditDeployedBuoyDialog({
                     </div>
                 </div>
             )}
+
+            <AssetDialog
+                isOpen={!!creationCategory}
+                onClose={() => {
+                    if (creationCategory) {
+                        loadStock(creationCategory);
+                    }
+                    setCreationCategory(null);
+                }}
+                mode="create"
+                category={creationCategory || ''}
+                itemTypes={creationItemTypes}
+            />
         </div>
     );
 }

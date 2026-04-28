@@ -86,7 +86,7 @@ export async function POST(req: Request) {
                 // 2. Find the OLD asset currently linked to the buoy
                 const { data: buoy } = await supabaseAdmin
                     .from('deployed_buoys')
-                    .select('metadata')
+                    .select('name, metadata')
                     .eq('id', buoyId)
                     .single();
 
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
                 // 3. Deploy NEW asset
                 await supabaseAdmin.from('assets').update({
                     status: 'deployed',
-                    location: `Op zee (${buoyId})`,
+                    location: `Boei ${buoy?.name || buoyId}`,
                     deployment_id: buoyId
                 }).eq('id', newAssetId);
 
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
             return null;
         };
 
-        const { data: buoyData } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
+        const { data: buoyData } = await supabaseAdmin.from('deployed_buoys').select('name, metadata').eq('id', buoyId).single();
         const newMetadata = { ...(buoyData?.metadata || {}) };
 
         if (replacements.buoy) {
@@ -192,7 +192,7 @@ export async function POST(req: Request) {
 
                     await supabaseAdmin.from('assets').update({
                         status: 'deployed',
-                        location: `Op zee (${buoyId})`,
+                        location: `Boei ${buoyData?.name || buoyId}`,
                         deployment_id: buoyId
                     }).eq('id', newAssetId);
 

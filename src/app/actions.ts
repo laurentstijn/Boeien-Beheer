@@ -162,11 +162,13 @@ export async function createAsset(prevState: any, formData: FormData) {
             lamp_color: lamp_color
         };
 
+        const finalZone = (activeZone === null && formData.get('zone_override')) ? (formData.get('zone_override') as string) : activeZone;
+
         const { data: newAsset, error } = await supabaseAdmin.from('assets').insert({
             item_id: itemId,
             status: status || 'in_stock',
             location: location,
-            zone: activeZone,
+            zone: finalZone,
             metadata: metadata
         }).select().single();
 
@@ -250,6 +252,8 @@ export async function updateAsset(prevState: any, formData: FormData) {
                 else if (category === 'Ketting') unlinkResult = await unlinkChainFromBuoy(currentBuoyId, id, status);
                 else if (category === 'Steen') unlinkResult = await unlinkStoneFromBuoy(currentBuoyId, id, status);
                 else if (category === 'Topteken') unlinkResult = await unlinkTopmarkFromBuoy(currentBuoyId, id, status);
+                else if (category === 'Sluiting') unlinkResult = await unlinkSluitingFromBuoy(currentBuoyId, id, status);
+                else if (category === 'Zinkblok') unlinkResult = await unlinkZinkblokFromBuoy(currentBuoyId, id, status);
 
                 if (unlinkResult && !unlinkResult.success) {
                     return { message: 'Fout bij ontkoppelen: ' + unlinkResult.message, success: false };
@@ -310,7 +314,7 @@ export async function updateAsset(prevState: any, formData: FormData) {
 
         // Note: unlink functions update status/location, so main update might overwrite fields like notes
         // We run main update anyway to ensure all fields are synced.
-        const { error } = await supabaseAdmin.from('assets').update({
+        const updatePayload: any = {
             status,
             item_id: finalItemId,
             location: isDeployed && deployment_buoy_id ? undefined : location, // Don't overwrite location if deploying to buoy (link function handles it)
@@ -335,7 +339,14 @@ export async function updateAsset(prevState: any, formData: FormData) {
                 ...(weight ? { weight } : {}),
                 ...(shape ? { shape } : {})
             }
-        }).eq('id', id);
+        };
+
+        const zoneOverride = formData.get('zone_override') as string;
+        if (zoneOverride) {
+            updatePayload.zone = zoneOverride;
+        }
+
+        const { error } = await supabaseAdmin.from('assets').update(updatePayload).eq('id', id);
 
         if (error) {
             console.error('Error updating asset:', error, 'ID:', id);
@@ -349,6 +360,8 @@ export async function updateAsset(prevState: any, formData: FormData) {
             else if (category === 'Ketting') linkResult = await linkChainToBuoy(deployment_buoy_id, id);
             else if (category === 'Steen') linkResult = await linkStoneToBuoy(deployment_buoy_id, id);
             else if (category === 'Topteken') linkResult = await linkTopmarkToBuoy(deployment_buoy_id, id);
+            else if (category === 'Sluiting') linkResult = await linkSluitingToBuoy(deployment_buoy_id, id);
+            else if (category === 'Zinkblok') linkResult = await linkZinkblokToBuoy(deployment_buoy_id, id);
 
             if (linkResult && !linkResult.success) {
                 return { message: 'Asset opgeslagen, maar koppelen mislukt: ' + linkResult.message, success: false };
@@ -981,6 +994,131 @@ export async function unlinkTopmarkFromBuoy(buoyId: string, topmarkAssetId: stri
         return { success: false, message: e.message };
     }
 }
+
+export async function unlinkSluitingFromBuoy(buoyId: string, shackleAssetId: string, targetStatus: string = 'in_stock') {
+    try {
+        await supabaseAdmin.from('assets').update({
+            status: targetStatus,
+            location: 'Magazijn',
+            deployment_id: null
+        }).eq('id', shackleAssetId);
+
+        const { data: buoy } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
+        if (buoy) {
+            const newMetadata = { ...buoy.metadata };
+            if (Array.isArray(newMetadata.shackles)) {
+                newMetadata.shackles = newMetadata.shackles.filter((s:any) => s.asset_id !== shackleAssetId);
+                if (newMetadata.shackles.length === 0) delete newMetadata.shackles;
+            }
+            if (newMetadata.shackle?.asset_id === shackleAssetId) delete newMetadata.shackle;
+            await supabaseAdmin.from('deployed_buoys').update({ metadata: newMetadata }).eq('id', buoyId);
+        }
+
+        revalidatePath('/uitgelegd');
+        revalidatePath('/sluitingen');
+        return { success: true, message: 'Sluiting ontkoppeld.' };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function linkSluitingToBuoy(buoyId: string, shackleAssetId: string) {
+    try {
+        const { data: asset, error: assetError } = await supabaseAdmin.from('assets').select('metadata, items!item_id(name)').eq('id', shackleAssetId).single();
+        if (assetError || !asset) throw new Error('Sluiting niet gevonden');
+
+        const { data: buoy, error: buoyError } = await supabaseAdmin.from('deployed_buoys').select('name, metadata').eq('id', buoyId).single();
+        if (buoyError || !buoy) throw new Error('Boei niet gevonden');
+
+        const { error: updateAssetError } = await supabaseAdmin.from('assets').update({
+            status: 'deployed',
+            location: `Boei ${buoy.name}`,
+            deployment_id: buoyId
+        }).eq('id', shackleAssetId);
+        if (updateAssetError) throw new Error('Fout bij updaten sluiting status');
+
+        const shackleName = Array.isArray((asset as any).items) ? (asset as any).items[0]?.name : (asset as any).items?.name;
+        
+        let newShackles = Array.isArray(buoy.metadata?.shackles) ? [...buoy.metadata.shackles] : [];
+        if (buoy.metadata?.shackle && newShackles.length === 0) newShackles.push(buoy.metadata.shackle);
+        
+        newShackles.push({
+            ...(asset.metadata || {}),
+            type: shackleName || 'Onbekend',
+            asset_id: shackleAssetId
+        });
+
+        const newMetadata = { ...buoy.metadata, shackles: newShackles };
+        delete newMetadata.shackle;
+
+        await supabaseAdmin.from('deployed_buoys').update({ metadata: newMetadata }).eq('id', buoyId);
+
+        revalidatePath('/uitgelegd');
+        revalidatePath('/sluitingen');
+        return { success: true, message: 'Sluiting succesvol gekoppeld.' };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function unlinkZinkblokFromBuoy(buoyId: string, zincAssetId: string, targetStatus: string = 'in_stock') {
+    try {
+        await supabaseAdmin.from('assets').update({
+            status: targetStatus,
+            location: 'Magazijn',
+            deployment_id: null
+        }).eq('id', zincAssetId);
+
+        const { data: buoy } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', buoyId).single();
+        if (buoy) {
+            const newMetadata = { ...buoy.metadata };
+            delete newMetadata.zinc;
+            await supabaseAdmin.from('deployed_buoys').update({ metadata: newMetadata }).eq('id', buoyId);
+        }
+
+        revalidatePath('/uitgelegd');
+        revalidatePath('/zinkblokken');
+        return { success: true, message: 'Zinkblok ontkoppeld.' };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
+
+export async function linkZinkblokToBuoy(buoyId: string, zincAssetId: string) {
+    try {
+        const { data: asset, error: assetError } = await supabaseAdmin.from('assets').select('metadata, items!item_id(name)').eq('id', zincAssetId).single();
+        if (assetError || !asset) throw new Error('Zinkblok niet gevonden');
+
+        const { data: buoy, error: buoyError } = await supabaseAdmin.from('deployed_buoys').select('name, metadata').eq('id', buoyId).single();
+        if (buoyError || !buoy) throw new Error('Boei niet gevonden');
+
+        const { error: updateAssetError } = await supabaseAdmin.from('assets').update({
+            status: 'deployed',
+            location: `Boei ${buoy.name}`,
+            deployment_id: buoyId
+        }).eq('id', zincAssetId);
+        if (updateAssetError) throw new Error('Fout bij updaten zinkblok status');
+
+        const zincName = Array.isArray((asset as any).items) ? (asset as any).items[0]?.name : (asset as any).items?.name;
+
+        const newMetadata = {
+            ...buoy.metadata,
+            zinc: {
+                ...(asset.metadata || {}),
+                type: zincName || 'Onbekend',
+                asset_id: zincAssetId
+            }
+        };
+
+        await supabaseAdmin.from('deployed_buoys').update({ metadata: newMetadata }).eq('id', buoyId);
+
+        revalidatePath('/uitgelegd');
+        revalidatePath('/zinkblokken');
+        return { success: true, message: 'Zinkblok succesvol gekoppeld.' };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
 export async function updateMaintenanceHistory(id: string, description: string) {
     try {
         const { error } = await supabaseAdmin.from('maintenance_history')
@@ -1255,4 +1393,12 @@ export async function deleteManualAction(filename: string, prefix: string = '') 
         console.error('Manual delete error:', error);
         return { success: false, message: error.message || 'Verwijderen gefaald' };
     }
+}
+
+export async function getActiveZoneContextAction() {
+    const activeZone = await getZoneFilter();
+    return {
+        isGlobal: activeZone === null,
+        activeZone
+    };
 }

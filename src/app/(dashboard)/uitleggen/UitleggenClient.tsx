@@ -6,12 +6,13 @@ import {
     CircleDot, Lightbulb, Hexagon, ChevronRight,
     ChevronLeft, Check, Ship, Loader2, Sparkles,
     Navigation, Map as MapIcon, ChevronDown, Search,
-    Camera, Upload, Wand2
+    Camera, Upload, Wand2, Plus
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
 import { deployBuoyAction } from "@/app/actions";
 import { BuoyIcon } from "@/components/BuoyIcon";
+import { AssetDialog } from "@/components/AssetDialog";
 import { parseSmartInput } from "@/lib/coordinates";
 import { toast } from "sonner";
 import { BuoyMap } from "@/components/BuoyMap";
@@ -72,7 +73,8 @@ const VisualDropdown = ({
     value,
     onChange,
     type,
-    placeholder
+    placeholder,
+    onAddNew
 }: {
     label: string,
     icon: any,
@@ -80,7 +82,8 @@ const VisualDropdown = ({
     value: string,
     onChange: (v: string) => void,
     type: 'chain' | 'stone' | 'light' | 'topmark',
-    placeholder: string
+    placeholder: string,
+    onAddNew?: () => void
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -246,6 +249,17 @@ const VisualDropdown = ({
                                 <p className="text-xs text-app-text-secondary font-medium">Geen resultaten voor "{searchQuery}"</p>
                             </div>
                         )}
+                        {onAddNew && (
+                          <div className="px-4 py-2 border-t border-app-border mt-2 sticky bottom-0 z-10 w-full rounded-b-[2rem] bg-app-surface/95 backdrop-blur-sm">
+                            <button
+                                type="button"
+                                onClick={() => { setIsOpen(false); onAddNew(); }}
+                                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-sm font-bold transition-all shadow-sm"
+                            >
+                                <Plus className="w-4 h-4" /> Nieuwe {type === 'light' ? 'lamp' : type === 'chain' ? 'ketting' : type === 'stone' ? 'steen' : 'aanmaken'}
+                            </button>
+                         </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -263,6 +277,42 @@ export default function UitleggenClient({
     activeZone
 }: UitleggenClientProps) {
     const router = useRouter();
+
+    const [localAvailableLights, setLocalAvailableLights] = useState(availableLights);
+    const [localAvailableChains, setLocalAvailableChains] = useState(availableChains || []);
+    const [localAvailableStones, setLocalAvailableStones] = useState(availableStones || []);
+    const [localAvailableTopmarks, setLocalAvailableTopmarks] = useState(availableTopmarks || []);
+
+    const [creationCategory, setCreationCategory] = useState<string | null>(null);
+    const [creationItemTypes, setCreationItemTypes] = useState<any[]>([]);
+
+    const handleOpenCreatePopup = async (category: string) => {
+        setCreationCategory(category);
+        try {
+            const res = await fetch(`/api/inventory/item-types?category=${category}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCreationItemTypes(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch item types", err);
+        }
+    };
+
+    const loadStock = async (category: string) => {
+        try {
+            const res = await fetch(`/api/inventory/available?category=${category}`);
+            if (!res.ok) throw new Error('Failed to fetch stock');
+            const data = await res.json();
+            if (category === 'Lamp') setLocalAvailableLights(data);
+            if (category === 'Ketting') setLocalAvailableChains(data);
+            if (category === 'Steen') setLocalAvailableStones(data);
+            if (category === 'Topteken') setLocalAvailableTopmarks(data);
+        } catch (err) {
+            console.error('Error loading stock for', category, err);
+        }
+    };
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -295,9 +345,9 @@ export default function UitleggenClient({
     };
 
     const selectedBuoy = useMemo(() => availableBuoys.find(b => b.id === formData.buoyId), [formData.buoyId, availableBuoys]);
-    const selectedChain = useMemo(() => availableChains.find(c => c.id === formData.chainId), [formData.chainId, availableChains]);
-    const selectedStone = useMemo(() => availableStones.find(s => s.id === formData.stoneId), [formData.stoneId, availableStones]);
-    const selectedLight = useMemo(() => availableLights.find(l => l.id === formData.lightId), [formData.lightId, availableLights]);
+    const selectedChain = useMemo(() => localAvailableChains.find(c => c.id === formData.chainId), [formData.chainId, localAvailableChains]);
+    const selectedStone = useMemo(() => localAvailableStones.find(s => s.id === formData.stoneId), [formData.stoneId, localAvailableStones]);
+    const selectedLight = useMemo(() => localAvailableLights.find(l => l.id === formData.lightId), [formData.lightId, localAvailableLights]);
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
@@ -677,21 +727,23 @@ export default function UitleggenClient({
                                 <VisualDropdown
                                     label="Ketting"
                                     icon={LinkIcon}
-                                    items={availableChains}
+                                    items={localAvailableChains}
                                     value={formData.chainId}
                                     onChange={(v) => setFormData({ ...formData, chainId: v })}
                                     type="chain"
                                     placeholder="Geen ketting (of hergebruik)"
+                                    onAddNew={() => handleOpenCreatePopup("Ketting")}
                                 />
 
                                 <VisualDropdown
                                     label="Steen"
                                     icon={Anchor}
-                                    items={availableStones}
+                                    items={localAvailableStones}
                                     value={formData.stoneId}
                                     onChange={(v) => setFormData({ ...formData, stoneId: v })}
                                     type="stone"
                                     placeholder="Geen steen"
+                                    onAddNew={() => handleOpenCreatePopup("Steen")}
                                 />
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -699,10 +751,10 @@ export default function UitleggenClient({
                                         <VisualDropdown
                                             label="Lamp"
                                             icon={Lightbulb}
-                                            items={availableLights}
+                                            items={localAvailableLights}
                                             value={formData.lightId}
                                             onChange={(v) => {
-                                                const lamp = availableLights.find(l => l.id === v);
+                                                const lamp = localAvailableLights.find(l => l.id === v);
                                                 setFormData({
                                                     ...formData,
                                                     lightId: v,
@@ -711,6 +763,7 @@ export default function UitleggenClient({
                                             }}
                                             type="light"
                                             placeholder="Geen lamp"
+                                            onAddNew={() => handleOpenCreatePopup("Lamp")}
                                         />
 
                                         {formData.lightId && (
@@ -727,11 +780,12 @@ export default function UitleggenClient({
                                     <VisualDropdown
                                         label="Topteken"
                                         icon={Hexagon}
-                                        items={availableTopmarks}
+                                        items={localAvailableTopmarks}
                                         value={formData.topmarkId}
                                         onChange={(v) => setFormData({ ...formData, topmarkId: v })}
                                         type="topmark"
                                         placeholder="Geen topteken"
+                                        onAddNew={() => handleOpenCreatePopup("Topteken")}
                                     />
                                 </div>
                             </div>
@@ -955,6 +1009,19 @@ export default function UitleggenClient({
                     )}
                 </div>
             </div>
+
+            <AssetDialog
+                isOpen={!!creationCategory}
+                onClose={() => {
+                    if (creationCategory) {
+                        loadStock(creationCategory);
+                    }
+                    setCreationCategory(null);
+                }}
+                mode="create"
+                category={creationCategory || ''}
+                itemTypes={creationItemTypes}
+            />
         </div>
     );
 }
