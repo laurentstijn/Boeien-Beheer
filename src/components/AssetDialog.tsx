@@ -607,6 +607,7 @@ function AssetForm({ mode, asset, itemTypes, buoys = [], formCategory, onSuccess
                                     <option value="Rood">Rood</option>
                                     <option value="Groen">Groen</option>
                                     <option value="Wit">Wit</option>
+                                    <option value="Blauw/Geel">Blauw/Geel</option>
                                 </select>
                             </div>
                             <div>

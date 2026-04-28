@@ -7,6 +7,7 @@ import clsx from 'clsx';
 // Helper: color dot CSS class
 export function colorDotClass(color: string) {
     switch (color?.toLowerCase()) {
+        case 'blauw/geel': return 'bg-gradient-to-r from-blue-500 to-yellow-400';
         case 'geel': return 'bg-yellow-400';
         case 'rood': return 'bg-red-500';
         case 'groen': return 'bg-green-500';

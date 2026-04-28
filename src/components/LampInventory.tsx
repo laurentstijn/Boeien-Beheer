@@ -83,6 +83,7 @@ export function LampInventory({ assets, itemTypes, buoys = [] }: LampInventoryPr
 
     const normalizeColor = (colorStr: string | undefined, modelName: string | undefined = '') => {
         const lower = (colorStr || modelName || '').toLowerCase();
+        if (lower.includes('blauw/geel') || lower.includes('yellow/blue') || lower.includes('blue/yellow')) return 'Blauw/Geel';
         if (lower.includes('geel') || lower.includes('yellow') || lower.match(/\by\b/)) return 'Geel';
         if (lower.includes('rood') || lower.includes('red') || lower.match(/\br\b/) || lower.includes('800r') || lower.includes('860r')) return 'Rood';
         if (lower.includes('groen') || lower.includes('green') || lower.match(/\bg\b/) || lower.includes('800g') || lower.includes('860g')) return 'Groen';
@@ -129,7 +130,7 @@ export function LampInventory({ assets, itemTypes, buoys = [] }: LampInventoryPr
             mainItemType: any | null;
         }>();
 
-        const colors = ['Geel', 'Rood', 'Groen', 'Wit'];
+        const colors = ['Geel', 'Rood', 'Groen', 'Wit', 'Blauw/Geel'];
         colors.forEach(c => {
             colorGroups.set(c, {
                 id: c,
@@ -236,6 +237,7 @@ export function LampInventory({ assets, itemTypes, buoys = [] }: LampInventoryPr
 
     const getColorDot = (color: string) => {
         const lower = color?.toLowerCase() || '';
+        if (lower.includes('blauw/geel')) return 'bg-gradient-to-r from-blue-500 to-yellow-400';
         if (lower.includes('geel')) return 'bg-yellow-400';
         if (lower.includes('rood')) return 'bg-red-500';
         if (lower.includes('groen')) return 'bg-green-500';

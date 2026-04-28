@@ -59,10 +59,10 @@ export async function GET(request: Request) {
             // Build a readable label
             const label = name;
 
-            const COLORS = ['rood', 'geel', 'groen', 'wit', 'blauw'];
+            const COLORS = ['blauw/geel', 'rood', 'geel', 'groen', 'wit', 'blauw'];
             const colorFromName = COLORS.find(c => name.toLowerCase().includes(c));
             const color = meta.color || meta.lamp_color ||
-                (colorFromName ? colorFromName.charAt(0).toUpperCase() + colorFromName.slice(1) : '');
+                (colorFromName ? (colorFromName === 'blauw/geel' ? 'Blauw/Geel' : colorFromName.charAt(0).toUpperCase() + colorFromName.slice(1)) : '');
 
             return {
                 id: a.id,

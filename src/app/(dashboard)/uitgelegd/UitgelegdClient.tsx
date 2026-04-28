@@ -7,7 +7,7 @@ import {
     Pencil, Undo2, Trash2, Ship, MapPin, Search, ArrowUpDown,
     ArrowUp, ArrowDown, AlertTriangle, Calendar, Bluetooth,
     Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2, Wand2,
-    ChevronDown, ChevronUp, ShieldCheck, Layers
+    ChevronDown, ChevronUp, ShieldCheck, Layers, Anchor
 } from "lucide-react";
 import clsx from "clsx";
 import { DeployedBuoy } from '@/lib/data';
@@ -1018,9 +1018,11 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                             </div>
                         </div>
 
-                        <div className="text-sm text-app-text-secondary italic bg-app-bg/50 px-3 py-2 rounded-lg border border-app-border/30 border-l-2 border-l-app-border">
-                            {log.notes || log.description || '—'}
-                        </div>
+                        {(log.notes?.trim() || log.description?.trim()) && (
+                            <div className="text-sm text-app-text-secondary italic bg-app-bg/50 px-3 py-2 rounded-lg border border-app-border/30 border-l-2 border-l-app-border">
+                                {log.notes || log.description}
+                            </div>
+                        )}
 
                         <div className="flex flex-wrap gap-2">
                             {log.metadata?.chain && (
@@ -1111,6 +1113,11 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                             {log.metadata?.light_tested && (
                                 <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-lg border border-amber-200 font-bold flex items-center gap-1">
                                     <Check className="w-3 h-3" /> Lamp getest
+                                </span>
+                            )}
+                            {log.metadata?.sinker_stuck && (
+                                <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded-lg border border-slate-300 font-bold flex items-center gap-1">
+                                    <Anchor className="w-3 h-3" /> Steen niet losgekregen
                                 </span>
                             )}
 

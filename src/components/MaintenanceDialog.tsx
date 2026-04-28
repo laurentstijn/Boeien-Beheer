@@ -39,6 +39,7 @@ export default function MaintenanceDialog({
     const [lightCharacter, setLightCharacter] = useState(logToEdit?.metadata?.light_character || buoy.lightCharacter || '');
     const [buoyCleaned, setBuoyCleaned] = useState(logToEdit?.metadata?.buoy_cleaned || false);
     const [lightTested, setLightTested] = useState(logToEdit?.metadata?.light_tested || false);
+    const [sinkerStuck, setSinkerStuck] = useState(logToEdit?.metadata?.sinker_stuck || false);
     const [isSaving, setIsSaving] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -282,7 +283,8 @@ export default function MaintenanceDialog({
                     zinc_lost: zincOldStatus === 'lost',
                     zinc_old_status: zincOldStatus,
                     buoy_cleaned: buoyCleaned,
-                    light_tested: lightTested
+                    light_tested: lightTested,
+                    sinker_stuck: sinkerStuck
                 }
             };
 
@@ -576,11 +578,11 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <span className="font-bold text-app-text-primary text-blue-900 dark:text-blue-100">Boei Vervangen</span>
-                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.buoyType.name} ({buoy.buoyType.color})</p>
+                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.buoyType?.name || 'Onbekend'} ({buoy.buoyType?.color || '-'})</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceBuoy} onChange={(e) => setReplaceBuoy(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-buoy-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-buoy-toggle" type="checkbox" checked={replaceBuoy} onChange={(e) => setReplaceBuoy(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -616,11 +618,11 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <span className="font-medium text-app-text-primary">Ketting Vervangen</span>
-                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.chain.type} {buoy.chain.length}</p>
+                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.chain?.type || 'Onbekend'} {buoy.chain?.length || '-'}m</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceChain} onChange={(e) => setReplaceChain(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-chain-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-chain-toggle" type="checkbox" checked={replaceChain} onChange={(e) => setReplaceChain(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -651,11 +653,11 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <span className="font-medium text-app-text-primary">Lamp Vervangen</span>
-                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.light.type} ({buoy.light.serialNumber || buoy.light.serial_number || buoy.light.article_number || 'Geen ID'})</p>
+                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.light?.type || 'Onbekend'} ({buoy.light?.serialNumber || buoy.light?.serial_number || buoy.light?.article_number || 'Geen ID'})</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceLight} onChange={(e) => setReplaceLight(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-light-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-light-toggle" type="checkbox" checked={replaceLight} onChange={(e) => setReplaceLight(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -686,11 +688,11 @@ export default function MaintenanceDialog({
                                         </div>
                                         <div>
                                             <span className="font-medium text-app-text-primary">Steen Vervangen</span>
-                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.sinker.type} ({buoy.sinker.weight})</p>
+                                            <p className="text-xs text-app-text-secondary">Huidig: {buoy.sinker?.type || 'Onbekend'} ({buoy.sinker?.weight || '-'})</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceSinker} onChange={(e) => setReplaceSinker(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-sinker-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-sinker-toggle" type="checkbox" checked={replaceSinker} onChange={(e) => setReplaceSinker(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -724,8 +726,8 @@ export default function MaintenanceDialog({
                                             <p className="text-xs text-app-text-secondary">Schakels / D-sluitingen / G-haken / Breidels</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceShackle} onChange={(e) => setReplaceShackle(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-shackle-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-shackle-toggle" type="checkbox" checked={replaceShackle} onChange={(e) => setReplaceShackle(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -792,8 +794,8 @@ export default function MaintenanceDialog({
                                             <p className="text-xs text-app-text-secondary">Zinkblok</p>
                                         </div>
                                     </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={replaceZinc} onChange={(e) => setReplaceZinc(e.target.checked)} className="sr-only peer" />
+                                    <label htmlFor="replace-zinc-toggle" className="relative inline-flex items-center cursor-pointer">
+                                        <input id="replace-zinc-toggle" type="checkbox" checked={replaceZinc} onChange={(e) => setReplaceZinc(e.target.checked)} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -819,7 +821,7 @@ export default function MaintenanceDialog({
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-3">
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <input
@@ -845,6 +847,20 @@ export default function MaintenanceDialog({
                                 <div>
                                     <span className="block text-sm font-bold text-amber-800 dark:text-amber-400">Lamp getest</span>
                                     <span className="block text-[10px] text-amber-600/80 dark:text-amber-500/80 uppercase font-bold">Functionaliteit</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={sinkerStuck}
+                                    onChange={(e) => setSinkerStuck(e.target.checked)}
+                                    className="w-4 h-4 text-slate-600 rounded border-gray-300 focus:ring-slate-500"
+                                />
+                                <div>
+                                    <span className="block text-sm font-bold text-slate-800 dark:text-slate-400">Steen zat vast</span>
+                                    <span className="block text-[10px] text-slate-600/80 dark:text-slate-500/80 uppercase font-bold">Niet losgekregen</span>
                                 </div>
                             </label>
                         </div>
