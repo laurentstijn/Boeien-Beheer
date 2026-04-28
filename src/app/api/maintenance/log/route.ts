@@ -58,8 +58,17 @@ export async function POST(req: Request) {
         const replacementNames: Record<string, string> = {};
 
         // Helper for swapping components
-        const swapComponent = async (assetId: string, isLost: boolean, typeKey: string, categoryName: string) => {
+        const swapComponent = async (assetId: string, isLost: boolean, typeKey: string, categoryName: string, oldStatus?: string) => {
             if (!assetId) return;
+
+            // Resolve the old asset status from the new oldStatus field, falling back to isLost boolean
+            const resolvedStatus = oldStatus === 'disposed' ? 'disposed' : (oldStatus === 'lost' || isLost) ? 'lost' : 'maintenance';
+            const statusMap: Record<string, { status: string, location: string }> = {
+                maintenance: { status: 'maintenance', location: 'Magazijn (Onderhoud)' },
+                disposed: { status: 'disposed', location: 'Afgevoerd' },
+                lost: { status: 'lost', location: 'Verloren' },
+            };
+            const oldAssetUpdate = statusMap[resolvedStatus] || statusMap.maintenance;
 
             // 1. Find the asset of this item type to get its name and specs
             const { data: availableAssets, error: assetError } = await supabaseAdmin
@@ -86,8 +95,8 @@ export async function POST(req: Request) {
                 if (oldAssetId) {
                     // Update OLD asset
                     await supabaseAdmin.from('assets').update({
-                        status: isLost ? 'lost' : 'maintenance',
-                        location: isLost ? 'Verloren' : 'Magazijn (Onderhoud)',
+                        status: oldAssetUpdate.status,
+                        location: oldAssetUpdate.location,
                         deployment_id: null
                     }).eq('id', oldAssetId);
                 }
@@ -112,7 +121,7 @@ export async function POST(req: Request) {
         const newMetadata = { ...(buoyData?.metadata || {}) };
 
         if (replacements.buoy) {
-            const result = await swapComponent(replacements.buoy, replacements.buoy_lost, 'buoy', 'Boei');
+            const result = await swapComponent(replacements.buoy, replacements.buoy_lost, 'buoy', 'Boei', replacements.buoy_old_status);
             if (result) {
                 newMetadata.buoy = result;
 
@@ -129,15 +138,15 @@ export async function POST(req: Request) {
             }
         }
         if (replacements.chain) {
-            const result = await swapComponent(replacements.chain, replacements.chain_lost, 'chain', 'Ketting');
+            const result = await swapComponent(replacements.chain, replacements.chain_lost, 'chain', 'Ketting', replacements.chain_old_status);
             if (result) newMetadata.chain = result;
         }
         if (replacements.light) {
-            const result = await swapComponent(replacements.light, replacements.light_lost, 'light', 'Lamp');
+            const result = await swapComponent(replacements.light, replacements.light_lost, 'light', 'Lamp', replacements.light_old_status);
             if (result) newMetadata.light = result;
         }
         if (replacements.sinker) {
-            const result = await swapComponent(replacements.sinker, replacements.sinker_lost, 'sinker', 'Steen');
+            const result = await swapComponent(replacements.sinker, replacements.sinker_lost, 'sinker', 'Steen', replacements.sinker_old_status);
             if (result) newMetadata.sinker = result;
         }
         if (replacements.shackles && Array.isArray(replacements.shackles)) {
@@ -166,10 +175,17 @@ export async function POST(req: Request) {
 
                     const oldAssetToReplace = currentShackles.shift();
                     if (oldAssetToReplace?.asset_id) {
-                        const isLost = newShackle.oldStatus === 'lost';
+                        const oldStatus = newShackle.oldStatus;
+                        const resolvedStatus = oldStatus === 'disposed' ? 'disposed' : oldStatus === 'lost' ? 'lost' : 'maintenance';
+                        const statusMap: Record<string, { status: string, location: string }> = {
+                            maintenance: { status: 'maintenance', location: 'Magazijn (Onderhoud)' },
+                            disposed: { status: 'disposed', location: 'Afgevoerd' },
+                            lost: { status: 'lost', location: 'Verloren' },
+                        };
+                        const oldAssetUpdate = statusMap[resolvedStatus] || statusMap.maintenance;
                         await supabaseAdmin.from('assets').update({
-                            status: isLost ? 'lost' : 'maintenance',
-                            location: isLost ? 'Verloren' : 'Magazijn (Onderhoud)',
+                            status: oldAssetUpdate.status,
+                            location: oldAssetUpdate.location,
                             deployment_id: null
                         }).eq('id', oldAssetToReplace.asset_id);
                     }
@@ -206,11 +222,17 @@ export async function POST(req: Request) {
             }
             delete newMetadata.shackle;
             if (newReplacementNames.length > 0) {
-                replacementNames['shackles'] = newReplacementNames.join(', ');
+                const counts = newReplacementNames.reduce((acc, name) => {
+                    acc[name] = (acc[name] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>);
+                replacementNames['shackles'] = Object.entries(counts)
+                    .map(([name, count]) => (count as number) > 1 ? `${count}× ${name}` : name)
+                    .join(', ');
             }
         }
         if (replacements.zinc) {
-            const result = await swapComponent(replacements.zinc, replacements.zinc_lost, 'zinc', 'Zinkblok');
+            const result = await swapComponent(replacements.zinc, replacements.zinc_lost, 'zinc', 'Zinkblok', replacements.zinc_old_status);
             if (result) newMetadata.zinc = result;
         }
 

@@ -1029,9 +1029,9 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                     <span>{log.metadata.replacement_names?.chain || "Ketting"}</span>
                                     <span className={clsx(
                                         "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
-                                        log.metadata.chain_lost ? "bg-red-600" : "bg-orange-600"
+                                        log.metadata.chain_old_status === 'disposed' ? "bg-gray-700" : log.metadata.chain_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
-                                        {log.metadata.chain_lost ? "Kwijt" : "Stuk"}
+                                        {log.metadata.chain_old_status === 'disposed' ? "Vuilbak" : log.metadata.chain_lost ? "Kwijt" : "Onderhoud"}
                                     </span>
                                 </div>
                             )}
@@ -1041,9 +1041,9 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                     <span>{log.metadata.replacement_names?.light || "Lamp"}</span>
                                     <span className={clsx(
                                         "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
-                                        log.metadata.light_lost ? "bg-red-600" : "bg-orange-600"
+                                        log.metadata.light_old_status === 'disposed' ? "bg-gray-700" : log.metadata.light_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
-                                        {log.metadata.light_lost ? "Kwijt" : "Stuk"}
+                                        {log.metadata.light_old_status === 'disposed' ? "Vuilbak" : log.metadata.light_lost ? "Kwijt" : "Onderhoud"}
                                     </span>
                                 </div>
                             )}
@@ -1053,9 +1053,9 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                     <span>{log.metadata.replacement_names?.sinker || "Steen"}</span>
                                     <span className={clsx(
                                         "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
-                                        log.metadata.sinker_lost ? "bg-red-600" : "bg-orange-600"
+                                        log.metadata.sinker_old_status === 'disposed' ? "bg-gray-700" : log.metadata.sinker_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
-                                        {log.metadata.sinker_lost ? "Kwijt" : "Stuk"}
+                                        {log.metadata.sinker_old_status === 'disposed' ? "Vuilbak" : log.metadata.sinker_lost ? "Kwijt" : "Onderhoud"}
                                     </span>
                                 </div>
                             )}
@@ -1065,16 +1065,25 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                     <span>{log.metadata.replacement_names?.buoy || "Boei"}</span>
                                     <span className={clsx(
                                         "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
-                                        log.metadata.buoy_lost ? "bg-red-600" : "bg-orange-600"
+                                        log.metadata.buoy_old_status === 'disposed' ? "bg-gray-700" : log.metadata.buoy_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
-                                        {log.metadata.buoy_lost ? "Kwijt" : "Stuk"}
+                                        {log.metadata.buoy_old_status === 'disposed' ? "Vuilbak" : log.metadata.buoy_lost ? "Kwijt" : "Onderhoud"}
                                     </span>
                                 </div>
                             )}
                             {log.metadata?.shackles && Array.isArray(log.metadata.shackles) && log.metadata.shackles.length > 0 && (
                                 <div className="flex items-center gap-2 bg-purple-100 text-purple-900 px-3 py-1.5 rounded-xl border border-purple-300 text-xs font-semibold">
                                     <ShieldCheck className="w-3.5 h-3.5" />
-                                    <span>{log.metadata.replacement_names?.shackles || `${log.metadata.shackles.length}× Sluiting`}</span>
+                                    <span>{(() => {
+                                        const names = log.metadata.replacement_names?.shackles;
+                                        if (!names) return `${log.metadata.shackles.length}× Sluiting`;
+                                        const parts = names.split(',').map((n: string) => n.trim());
+                                        const counts = parts.reduce((acc: Record<string, number>, name: string) => {
+                                            acc[name] = (acc[name] || 0) + 1;
+                                            return acc;
+                                        }, {});
+                                        return Object.entries(counts).map(([name, count]) => (count as number) > 1 ? `${count}× ${name}` : name).join(', ');
+                                    })()}</span>
                                 </div>
                             )}
                             {log.metadata?.zinc && (
@@ -1083,9 +1092,9 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                     <span>{log.metadata.replacement_names?.zinc || "Zinkblok"}</span>
                                     <span className={clsx(
                                         "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
-                                        log.metadata.zinc_lost ? "bg-red-600" : "bg-orange-600"
+                                        log.metadata.zinc_old_status === 'disposed' ? "bg-gray-700" : log.metadata.zinc_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
-                                        {log.metadata.zinc_lost ? "Kwijt" : "Stuk"}
+                                        {log.metadata.zinc_old_status === 'disposed' ? "Vuilbak" : log.metadata.zinc_lost ? "Kwijt" : "Onderhoud"}
                                     </span>
                                 </div>
                             )}

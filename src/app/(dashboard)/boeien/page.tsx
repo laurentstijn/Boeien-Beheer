@@ -4,7 +4,7 @@ import { StockManagement } from "@/components/StockManagement";
 import { AddBuoyButton } from "@/components/AddBuoyButton";
 import { AssemblySummary } from "@/components/AssemblySummary";
 import { StructureInventorySummary } from "@/components/StructureInventorySummary";
-import { getAssets, getItemTypes, getAssemblyPotential } from "@/lib/db";
+import { getAssets, getItemTypes, getAssemblyPotential, getDeployedBuoys } from "@/lib/db";
 import { inventoryItems } from "@/lib/data";
 
 export default async function BoeienPage() {
@@ -13,7 +13,7 @@ export default async function BoeienPage() {
     const structuurAssets = await getAssets("Structuur");
     const structuurTypes = await getItemTypes("Structuur");
     const assemblyPotentials = await getAssemblyPotential();
-
+    const buoys = await getDeployedBuoys();
     // Combined lists for filtering
     const assets = [...buoyAssets, ...structuurAssets];
 
@@ -100,7 +100,7 @@ export default async function BoeienPage() {
             {/* Headers / Intro */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="text-xl font-bold text-app-text-primary">Voorraad Beheer</h2>
-                <AddBuoyButton itemTypes={validBuoyTypes} />
+                <AddBuoyButton itemTypes={validBuoyTypes} buoys={buoys} />
             </div>
 
             {/* JET 2000 Management */}
@@ -110,6 +110,7 @@ export default async function BoeienPage() {
                 category="Boei"
                 itemTypes={jet2000Types}
                 showColor={true}
+                buoys={buoys}
             />
 
             {/* JET 9000 Management */}
@@ -119,6 +120,7 @@ export default async function BoeienPage() {
                 category="Boei"
                 itemTypes={jet9000Types}
                 showColor={true}
+                buoys={buoys}
             />
 
             {/* Mobilis BC1241 Management */}
@@ -128,6 +130,7 @@ export default async function BoeienPage() {
                 category="Boei"
                 itemTypes={mobilisBCTypes}
                 showColor={true}
+                buoys={buoys}
             />
 
             {/* Mobilis AQ1500 Management */}
@@ -137,6 +140,7 @@ export default async function BoeienPage() {
                 category="Boei"
                 itemTypes={mobilisAQTypes}
                 showColor={true}
+                buoys={buoys}
             />
 
             {/* JFC 1250 Management */}
@@ -147,6 +151,7 @@ export default async function BoeienPage() {
                     category="Boei"
                     itemTypes={jfc1250Types}
                     showColor={true}
+                buoys={buoys}
                 />
             )}
 
@@ -158,6 +163,7 @@ export default async function BoeienPage() {
                     category="Boei"
                     itemTypes={jfc1500Types}
                     showColor={true}
+                buoys={buoys}
                 />
             )}
 
@@ -169,6 +175,7 @@ export default async function BoeienPage() {
                     category="Boei"
                     itemTypes={sealiteTypes}
                     showColor={true}
+                buoys={buoys}
                 />
             )}
 
@@ -181,6 +188,7 @@ export default async function BoeienPage() {
                         category="Boei"
                         itemTypes={otherTypes}
                         showColor={true}
+                buoys={buoys}
                     />
                 </div>
             )}
@@ -219,6 +227,7 @@ export default async function BoeienPage() {
                             category="Structuur"
                             itemTypes={remainingTypes}
                             showColor={false}
+                            buoys={buoys}
                         />
                     </div>
                 );

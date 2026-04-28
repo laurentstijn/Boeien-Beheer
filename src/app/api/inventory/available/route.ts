@@ -9,7 +9,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const includeAssetId = searchParams.get('includeAssetId');
+    const includeAssetIds = searchParams.get('includeAssetIds') || searchParams.get('includeAssetId');
 
     if (!category) {
         return NextResponse.json({ error: 'Category required' }, { status: 400 });
@@ -30,8 +30,10 @@ export async function GET(request: Request) {
                 )
             `);
 
-        if (includeAssetId) {
-            query = query.or(`status.eq.in_stock,id.eq.${includeAssetId}`);
+        if (includeAssetIds) {
+            const ids = includeAssetIds.split(',').filter(Boolean);
+            const orClauses = ids.map(id => `id.eq.${id}`).join(',');
+            query = query.or(`status.eq.in_stock,${orClauses}`);
         } else {
             query = query.eq('status', 'in_stock');
         }
@@ -55,14 +57,7 @@ export async function GET(request: Request) {
             const name = a.items?.name || 'Onbekend';
 
             // Build a readable label
-            let label: string;
-            if (serial) {
-                label = `SN: ${serial} — ${name}`;
-            } else {
-                // Number duplicates: "Carmanah M650 #1", "Carmanah M650 #2"
-                typeCounts[name] = (typeCounts[name] || 0) + 1;
-                label = `${name} #${typeCounts[name]}`;
-            }
+            const label = name;
 
             const COLORS = ['rood', 'geel', 'groen', 'wit', 'blauw'];
             const colorFromName = COLORS.find(c => name.toLowerCase().includes(c));

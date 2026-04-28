@@ -42,9 +42,7 @@ export default function AssetPicker({ items, value, onChange, onAddNew, placehol
     const selected = items.find(i => i.id === value);
 
     const getDisplayName = (item: any) => {
-        const serial = item.metadata?.serialNumber || item.metadata?.serial_number || item.serial_number || item.id.slice(0, 6);
-        const typeName = item.name || item.type || (Array.isArray(item.items) ? item.items[0]?.name : item.items?.name) || 'Onderdeel';
-        return `${serial} (${typeName})`;
+        return item.name || item.type || (Array.isArray(item.items) ? item.items[0]?.name : item.items?.name) || 'Onderdeel';
     };
 
     const getItemColor = (item: any) => {

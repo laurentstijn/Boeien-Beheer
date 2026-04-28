@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { DeployedBuoy } from "@/lib/data";
 import L from "leaflet";
 import clsx from "clsx";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 
 // Helper to center map when selection changes
 // Helper to handle map effects (load, center, reset)
@@ -38,7 +38,20 @@ function MapController({ selectedBuoyId, buoys, activeZone }: { selectedBuoyId: 
         if (selectedBuoyId) {
             const buoy = buoys.find(b => b.id === selectedBuoyId);
             if (buoy) {
-                map.setView([buoy.location.lat, buoy.location.lng], 16, { animate: true });
+                // Determine target lat/lng and zoom
+                const targetLatLng = L.latLng(buoy.location.lat, buoy.location.lng);
+                const targetZoom = 16;
+                // Calculate position in pixels at target zoom
+                const targetPoint = map.project(targetLatLng, targetZoom);
+                // Offset the center so the marker ends up sitting vertically lower on the screen
+                // We subtract from Y to push the "camera" up, so the marker falls down.
+                // map.getSize().y / 6 corresponds roughly to an extra 16.6% from the center
+                // which puts the marker at ~66% from the top (2/3 of the screen).
+                const offsetY = map.getSize().y > 0 ? (map.getSize().y / 6) : 100; // fallback offset if size is 0
+                const offsetPoint = L.point(targetPoint.x, targetPoint.y - offsetY);
+                const newCenter = map.unproject(offsetPoint, targetZoom);
+                
+                map.setView(newCenter, targetZoom, { animate: true });
             }
         }
     }, [selectedBuoyId, buoys, map]);
@@ -114,7 +127,7 @@ const threeBandSvg = (outer: string, middle: string) => `
         <circle cx="12" cy="12" r="10" fill="none" stroke="white" stroke-width="1.5"/>
     </svg>`;
 
-const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean) => {
+const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, alertStatus: 'none' | 'overdue' | 'attention') => {
     const colorLower = (buoy.buoyType?.color || '').toLowerCase();
     const typeLower = (buoy.buoyType?.name || '').toLowerCase();
     const soort = ((buoy as any).metadata?.boei_soort || '').toLowerCase();
@@ -153,13 +166,17 @@ const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean
         finalSvg = `<svg viewBox="0 0 24 24" width="28" height="28" style="fill:${hexColor};stroke:white;stroke-width:1.5;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));"><circle cx="12" cy="12" r="10"/></svg>`;
     }
 
+    const flashBgColor = alertStatus === 'attention' ? 'rgba(255, 136, 0, 0.7)' : 'rgba(239, 68, 68, 0.5)';
+    const dotColor = alertStatus === 'attention' ? '#FF8800' : '#dc2626';
+
     return L.divIcon({
         className: 'custom-buoy-icon',
         html: `
             <div style="position:relative;display:flex;align-items:center;justify-content:center;${isSelected ? 'transform:scale(1.3);z-index:1000;' : 'z-index:500;'}">
-                ${isOverdue ? '<div class="absolute inset-0 rounded-full bg-red-500/40 animate-ping"></div>' : ''}
+                ${alertStatus !== 'none' ? `<div class="absolute inset-0 rounded-full animate-ping" style="background-color: ${flashBgColor};"></div>` : ''}
                 ${finalSvg}
-                ${isOverdue ? '<div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:#dc2626;border:2px solid white;border-radius:9999px;"></div>' : ''}
+                <div style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.95); padding:0px 4px; border-radius:4px; font-size:10px; font-weight:900; color:#1f2937; box-shadow:0 1px 2px rgba(0,0,0,0.3); white-space:nowrap; border:1px solid rgba(0,0,0,0.1);">${buoy.name}</div>
+                ${alertStatus !== 'none' ? `<div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:${dotColor};border:2px solid white;border-radius:9999px;"></div>` : ''}
                 ${isSelected ? '<div class="absolute -bottom-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>' : ''}
             </div>
         `,
@@ -170,6 +187,177 @@ const getBuoyIcon = (buoy: DeployedBuoy, isSelected: boolean, isOverdue: boolean
 
 };
 
+// Helper component for each marker to handle auto-opening popup
+function BuoyMarker({ buoy, isSelected, alertStatus, onSelect }: { buoy: DeployedBuoy, isSelected: boolean, alertStatus: 'none' | 'overdue' | 'attention', onSelect?: (id: string | null) => void }) {
+    // any cast because react-leaflet types mismatch sometimes
+    const ref = useRef<any>(null);
+
+    useEffect(() => {
+        // Automatically open the popup if it's selected from the list
+        if (isSelected && ref.current && typeof ref.current.openPopup === 'function') {
+            ref.current.openPopup();
+        }
+    }, [isSelected]);
+
+    return (
+        <Marker
+            position={[buoy.location.lat, buoy.location.lng]}
+            icon={getBuoyIcon(buoy, isSelected, alertStatus)}
+            ref={ref}
+            eventHandlers={{
+                click: () => onSelect?.(buoy.id)
+            }}
+        >
+            <Popup autoPan={false}>
+                <div className="p-2 min-w-[180px] max-w-[240px]">
+                    <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-2">
+                        <div className={clsx("w-3 h-3 rounded-full shadow-sm border border-black/10", {
+                            "bg-red-500": (buoy.buoyType?.color || "").toLowerCase().includes("rood") || (buoy.buoyType?.color || "").toLowerCase().includes("red"),
+                            "bg-green-500": (buoy.buoyType?.color || "").toLowerCase().includes("groen") || (buoy.buoyType?.color || "").toLowerCase().includes("green"),
+                            "bg-yellow-500": (buoy.buoyType?.color || "").toLowerCase().includes("geel") || (buoy.buoyType?.color || "").toLowerCase().includes("yellow"),
+                            "bg-blue-500": (buoy.buoyType?.color || "").toLowerCase().includes("blauw") || (buoy.buoyType?.color || "").toLowerCase().includes("blue"),
+                            "bg-gray-800": (buoy.buoyType?.color || "").toLowerCase().includes("zwart") || (buoy.buoyType?.color || "").toLowerCase().includes("black"),
+                        })} />
+                        <span className="text-sm font-bold text-gray-900">{buoy.name}</span>
+                        {alertStatus !== 'none' && (
+                            <span className={clsx("ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse", {
+                                "bg-red-100 text-red-700": alertStatus === 'overdue',
+                                "bg-orange-100 text-orange-700": alertStatus === 'attention'
+                            })}>
+                                {alertStatus === 'attention' ? 'AANDACHT' : 'NIET OK'}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Configuratie</p>
+                            <p className="text-[11px] text-gray-700 font-medium m-0">{buoy.buoyType?.name || 'Onbekend'} ({buoy.buoyType?.color})</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Laatst</p>
+                                <p className="text-[11px] text-gray-700 font-medium m-0">
+                                    {buoy.lastServiceDate ? new Date(buoy.lastServiceDate).toLocaleDateString('nl-BE') : 'Geen'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Volgende</p>
+                                <p className={clsx("text-[11px] font-bold m-0", alertStatus === 'overdue' ? "text-red-600" : (alertStatus === 'attention' ? "text-orange-600" : "text-green-600"))}>
+                                    {buoy.nextServiceDue ? new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE') : 'Geen'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {buoy.metadata?.external_customer && (
+                            <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg">
+                                <p className="text-[9px] uppercase font-black text-blue-500 mb-0.5">Externe Klant</p>
+                                <p className="text-[11px] font-bold text-blue-900 m-0">{buoy.metadata.customer_name || 'Onbekend'}</p>
+                            </div>
+                        )}
+
+                        <div className="pt-2 border-t border-gray-100">
+                            <p className="text-[10px] uppercase font-bold text-gray-400 mb-1.5 tracking-wider">Onderdelen</p>
+                            <div className="space-y-2.5">
+                                {/* Lamp */}
+                                {(buoy.light?.type || buoy.light?.serialNumber) && (
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-[11px] shrink-0">🔦</span>
+                                        <div className="min-w-0">
+                                            <div className="text-[11px] text-gray-800 leading-tight">
+                                                {buoy.light?.serialNumber && <span className="text-blue-600 font-bold font-mono mr-1.5">{buoy.light.serialNumber}</span>}
+                                                <span className="font-medium text-gray-500">{buoy.light?.type}</span>
+                                            </div>
+                                            {buoy.lightCharacter && (
+                                                <div className="text-[10px] text-blue-600 font-bold uppercase mt-0.5">
+                                                    Flash: {buoy.lightCharacter}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Ketting */}
+                                {buoy.chain?.type && (
+                                    <div className="flex items-start gap-2">
+                                        <div className="shrink-0 mt-0.5">
+                                            <div className={clsx("w-2.5 h-2.5 rounded-full", {
+                                                "bg-blue-500": buoy.chain.type?.toLowerCase().includes('blauw'),
+                                                "bg-red-500": buoy.chain.type?.toLowerCase().includes('rood'),
+                                                "bg-yellow-400": buoy.chain.type?.toLowerCase().includes('geel'),
+                                                "bg-white border border-gray-200": buoy.chain.type?.toLowerCase().includes('wit'),
+                                                "bg-green-500": buoy.chain.type?.toLowerCase().includes('groen'),
+                                                "bg-gray-800": buoy.chain.type?.toLowerCase().includes('zwart'),
+                                            })} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-[11px] font-medium text-gray-700 leading-tight">
+                                                {buoy.chain.type?.replace(/^Ketting\s+/i, '')}
+                                            </div>
+                                            {(() => {
+                                                const length = buoy.chain?.length || (buoy as any).metadata?.chain?.lengte || (buoy as any).metadata?.chain?.length;
+                                                const thickness = buoy.chain?.thickness || (buoy as any).metadata?.chain?.dikte || (buoy as any).metadata?.chain?.thickness;
+                                                if (!length && !thickness) return null;
+                                                return (
+                                                    <div className="text-[10px] text-gray-400">
+                                                        {length && `${length}${String(length).toLowerCase().includes('m') ? '' : 'm'}`}
+                                                        {length && thickness && ' | '}
+                                                        {thickness && `${thickness}${String(thickness).toLowerCase().includes('mm') ? '' : 'mm'}`}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Steen */}
+                                {buoy.sinker?.type && (
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-[11px] shrink-0">⚓</span>
+                                        <div className="min-w-0">
+                                            <div className="text-[11px] font-medium text-gray-700 leading-tight">
+                                                {buoy.sinker.type}
+                                            </div>
+                                            {(() => {
+                                                const weight = buoy.sinker?.weight || (buoy as any).metadata?.sinker?.gewicht || (buoy as any).metadata?.sinker?.weight;
+                                                if (!weight) return null;
+                                                return (
+                                                    <div className="text-[10px] text-gray-400">
+                                                        Gewicht: {weight}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {buoy.lastServiceNotes && (
+                            <div className="pt-2 border-t border-gray-100">
+                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-1 tracking-wider">Laatste vindingen</p>
+                                <p className="text-[10px] text-blue-700 italic m-0 leading-tight">
+                                    "{buoy.lastServiceNotes}"
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect?.(buoy.id);
+                        }}
+                        className="mt-3 w-full text-[10px] font-bold bg-blue-500 hover:bg-blue-600 text-white py-1.5 rounded transition-all shadow-sm"
+                    >
+                        BEKIJK IN LIJST
+                    </button>
+                </div>
+            </Popup>
+        </Marker>
+    );
+}
 
 
 export default function BuoyMapInternal({
@@ -215,163 +403,21 @@ export default function BuoyMapInternal({
                 <ResetZoomControl buoys={buoys} activeZone={activeZone} />
 
                 {buoys.map((buoy) => {
-                    // Map markers flash if status is not OK, OR if the service date is strictly in the past (overtime)
-                    const isOverdue = buoy.status === 'Niet OK' || buoy.status === 'Maintenance' || buoy.status === 'Aandacht' ||
-                        (buoy.nextServiceDue ? new Date(buoy.nextServiceDue) < new Date() : false);
+                    let alertStatus: 'none' | 'overdue' | 'attention' = 'none';
+                    if (buoy.status === 'Maintenance') {
+                        alertStatus = 'attention';
+                    } else if (buoy.status === 'Niet OK' || (buoy.nextServiceDue && new Date(buoy.nextServiceDue) < new Date())) {
+                        alertStatus = 'overdue';
+                    }
+
                     return (
-                        <Marker
+                        <BuoyMarker
                             key={buoy.id}
-                            position={[buoy.location.lat, buoy.location.lng]}
-                            icon={getBuoyIcon(buoy, selectedBuoyId === buoy.id, isOverdue)}
-                            eventHandlers={{
-                                click: () => onSelect?.(buoy.id)
-                            }}
-                        >
-                            <Popup>
-                                <div className="p-2 min-w-[180px] max-w-[240px]">
-                                    <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-2">
-                                        <div className={clsx("w-3 h-3 rounded-full shadow-sm border border-black/10", {
-                                            "bg-red-500": (buoy.buoyType?.color || "").toLowerCase().includes("rood") || (buoy.buoyType?.color || "").toLowerCase().includes("red"),
-                                            "bg-green-500": (buoy.buoyType?.color || "").toLowerCase().includes("groen") || (buoy.buoyType?.color || "").toLowerCase().includes("green"),
-                                            "bg-yellow-500": (buoy.buoyType?.color || "").toLowerCase().includes("geel") || (buoy.buoyType?.color || "").toLowerCase().includes("yellow"),
-                                            "bg-blue-500": (buoy.buoyType?.color || "").toLowerCase().includes("blauw") || (buoy.buoyType?.color || "").toLowerCase().includes("blue"),
-                                            "bg-gray-800": (buoy.buoyType?.color || "").toLowerCase().includes("zwart") || (buoy.buoyType?.color || "").toLowerCase().includes("black"),
-                                        })} />
-                                        <span className="text-sm font-bold text-gray-900">{buoy.name}</span>
-                                        {isOverdue && (
-                                            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 animate-pulse">
-                                                NIET OK
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div>
-                                            <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Configuratie</p>
-                                            <p className="text-[11px] text-gray-700 font-medium m-0">{buoy.buoyType?.name || 'Onbekend'} ({buoy.buoyType?.color})</p>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Laatst</p>
-                                                <p className="text-[11px] text-gray-700 font-medium m-0">
-                                                    {buoy.lastServiceDate ? new Date(buoy.lastServiceDate).toLocaleDateString('nl-BE') : 'Geen'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5 tracking-wider">Volgende</p>
-                                                <p className={clsx("text-[11px] font-bold m-0", isOverdue ? "text-red-600" : "text-green-600")}>
-                                                    {buoy.nextServiceDue ? new Date(buoy.nextServiceDue).toLocaleDateString('nl-BE') : 'Geen'}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {buoy.metadata?.external_customer && (
-                                            <div className="p-2 bg-blue-50 border border-blue-100 rounded-lg">
-                                                <p className="text-[9px] uppercase font-black text-blue-500 mb-0.5">Externe Klant</p>
-                                                <p className="text-[11px] font-bold text-blue-900 m-0">{buoy.metadata.customer_name || 'Onbekend'}</p>
-                                            </div>
-                                        )}
-
-                                        <div className="pt-2 border-t border-gray-100">
-                                            <p className="text-[10px] uppercase font-bold text-gray-400 mb-1.5 tracking-wider">Onderdelen</p>
-                                            <div className="space-y-2.5">
-                                                {/* Lamp */}
-                                                {(buoy.light?.type || buoy.light?.serialNumber) && (
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="text-[11px] shrink-0">🔦</span>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[11px] text-gray-800 leading-tight">
-                                                                {buoy.light?.serialNumber && <span className="text-blue-600 font-bold font-mono mr-1.5">{buoy.light.serialNumber}</span>}
-                                                                <span className="font-medium text-gray-500">{buoy.light?.type}</span>
-                                                            </div>
-                                                            {buoy.lightCharacter && (
-                                                                <div className="text-[10px] text-blue-600 font-bold uppercase mt-0.5">
-                                                                    Flash: {buoy.lightCharacter}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Ketting */}
-                                                {buoy.chain?.type && (
-                                                    <div className="flex items-start gap-2">
-                                                        <div className="shrink-0 mt-0.5">
-                                                            <div className={clsx("w-2.5 h-2.5 rounded-full", {
-                                                                "bg-blue-500": buoy.chain.type?.toLowerCase().includes('blauw'),
-                                                                "bg-red-500": buoy.chain.type?.toLowerCase().includes('rood'),
-                                                                "bg-yellow-400": buoy.chain.type?.toLowerCase().includes('geel'),
-                                                                "bg-white border border-gray-200": buoy.chain.type?.toLowerCase().includes('wit'),
-                                                                "bg-green-500": buoy.chain.type?.toLowerCase().includes('groen'),
-                                                                "bg-gray-800": buoy.chain.type?.toLowerCase().includes('zwart'),
-                                                            })} />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[11px] font-medium text-gray-700 leading-tight">
-                                                                {buoy.chain.type?.replace(/^Ketting\s+/i, '')}
-                                                            </div>
-                                                            {(() => {
-                                                                const length = buoy.chain?.length || (buoy as any).metadata?.chain?.lengte || (buoy as any).metadata?.chain?.length;
-                                                                const thickness = buoy.chain?.thickness || (buoy as any).metadata?.chain?.dikte || (buoy as any).metadata?.chain?.thickness;
-                                                                if (!length && !thickness) return null;
-                                                                return (
-                                                                    <div className="text-[10px] text-gray-400">
-                                                                        {length && `${length}${String(length).toLowerCase().includes('m') ? '' : 'm'}`}
-                                                                        {length && thickness && ' | '}
-                                                                        {thickness && `${thickness}${String(thickness).toLowerCase().includes('mm') ? '' : 'mm'}`}
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Steen */}
-                                                {buoy.sinker?.type && (
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="text-[11px] shrink-0">⚓</span>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[11px] font-medium text-gray-700 leading-tight">
-                                                                {buoy.sinker.type}
-                                                            </div>
-                                                            {(() => {
-                                                                const weight = buoy.sinker?.weight || (buoy as any).metadata?.sinker?.gewicht || (buoy as any).metadata?.sinker?.weight;
-                                                                if (!weight) return null;
-                                                                return (
-                                                                    <div className="text-[10px] text-gray-400">
-                                                                        Gewicht: {weight}
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {buoy.lastServiceNotes && (
-                                            <div className="pt-2 border-t border-gray-100">
-                                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-1 tracking-wider">Laatste vindingen</p>
-                                                <p className="text-[10px] text-blue-700 italic m-0 leading-tight">
-                                                    "{buoy.lastServiceNotes}"
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onSelect?.(buoy.id);
-                                        }}
-                                        className="mt-3 w-full text-[10px] font-bold bg-blue-500 hover:bg-blue-600 text-white py-1.5 rounded transition-all shadow-sm"
-                                    >
-                                        BEKIJK IN LIJST
-                                    </button>
-                                </div>
-                            </Popup>
-                        </Marker>
+                            buoy={buoy}
+                            isSelected={selectedBuoyId === buoy.id}
+                            alertStatus={alertStatus}
+                            onSelect={onSelect}
+                        />
                     );
                 })}
             </MapContainer>

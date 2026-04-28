@@ -38,6 +38,6 @@ export function AddAssetButton({ itemTypes, category = "Boei", label = "Nieuwe B
     );
 }
 
-export function AddBuoyButton({ itemTypes }: { itemTypes: any[] }) {
-    return <AddAssetButton itemTypes={itemTypes} category="Boei" label="Nieuwe Boei" />;
+export function AddBuoyButton({ itemTypes, buoys = [] }: { itemTypes: any[], buoys?: any[] }) {
+    return <AddAssetButton itemTypes={itemTypes} category="Boei" label="Nieuwe Boei" buoys={buoys} />;
 }

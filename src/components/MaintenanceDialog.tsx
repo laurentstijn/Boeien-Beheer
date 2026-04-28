@@ -63,7 +63,7 @@ export default function MaintenanceDialog({
     const [replaceChain, setReplaceChain] = useState(!!logToEdit?.metadata?.chain);
     const [replaceLight, setReplaceLight] = useState(!!logToEdit?.metadata?.light);
     const [replaceSinker, setReplaceSinker] = useState(!!logToEdit?.metadata?.sinker);
-    const [replaceShackle, setReplaceShackle] = useState(!!logToEdit?.metadata?.shackle);
+    const [replaceShackle, setReplaceShackle] = useState(!!(logToEdit?.metadata?.shackle || (logToEdit?.metadata?.shackles && logToEdit.metadata.shackles.length > 0)));
     const [replaceZinc, setReplaceZinc] = useState(!!logToEdit?.metadata?.zinc);
     const [replaceBuoy, setReplaceBuoy] = useState(!!logToEdit?.metadata?.buoy);
 
@@ -78,13 +78,16 @@ export default function MaintenanceDialog({
     const [selectedChainId, setSelectedChainId] = useState(logToEdit?.metadata?.chain || '');
     const [selectedLightId, setSelectedLightId] = useState(logToEdit?.metadata?.light || '');
     const [selectedSinkerId, setSelectedSinkerId] = useState(logToEdit?.metadata?.sinker || '');
-    const [shackleReplacements, setShackleReplacements] = useState<{ id: string, assetId: string, oldStatus: 'broken' | 'lost' }[]>(() => {
+    const [shackleReplacements, setShackleReplacements] = useState<{ id: string, assetId: string, oldStatus: 'broken' | 'disposed' | 'lost' }[]>(() => {
         if (logToEdit?.metadata?.shackles && Array.isArray(logToEdit.metadata.shackles)) {
-            return logToEdit.metadata.shackles.map((s: any) => ({
-                id: Math.random().toString(36).substring(7),
-                assetId: s.assetId || s.asset_id || '',
-                oldStatus: s.oldStatus || (s.lost ? 'lost' : 'broken')
-            }));
+            const filled = logToEdit.metadata.shackles.filter((s: any) => s.assetId || s.asset_id);
+            if (filled.length > 0) {
+                return filled.map((s: any) => ({
+                    id: Math.random().toString(36).substring(7),
+                    assetId: s.assetId || s.asset_id || '',
+                    oldStatus: s.oldStatus || (s.lost ? 'lost' : 'broken')
+                }));
+            }
         } else if (logToEdit?.metadata?.shackle) {
             return [{
                 id: Math.random().toString(36).substring(7),
@@ -92,17 +95,19 @@ export default function MaintenanceDialog({
                 oldStatus: logToEdit.metadata.shackle_lost ? 'lost' : 'broken'
             }];
         }
-        return [{ id: Math.random().toString(36).substring(7), assetId: '', oldStatus: 'broken' }];
+        return [{ id: Math.random().toString(36).substring(7), assetId: '', oldStatus: 'maintenance' as any }];
     });
     const [selectedZincId, setSelectedZincId] = useState(logToEdit?.metadata?.zinc || '');
     const [selectedBuoyId, setSelectedBuoyId] = useState(logToEdit?.metadata?.buoy || '');
 
-    // Old Status: 'broken' (Stuk) or 'lost' (Kwijt)
-    const [chainOldStatus, setChainOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.chain_lost ? 'lost' : 'broken');
-    const [lightOldStatus, setLightOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.light_lost ? 'lost' : 'broken');
-    const [sinkerOldStatus, setSinkerOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.sinker_lost ? 'lost' : 'broken');
-    const [zincOldStatus, setZincOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.zinc_lost ? 'lost' : 'broken');
-    const [buoyOldStatus, setBuoyOldStatus] = useState<'broken' | 'lost'>(logToEdit?.metadata?.buoy_lost ? 'lost' : 'broken');
+    // Old Status: 'broken' (Onderhoud), 'disposed' (Vuilbak), or 'lost' (Kwijt)
+    type OldPartStatus = 'broken' | 'disposed' | 'lost';
+    const resolveOldStatus = (lost?: boolean, status?: string): OldPartStatus => status === 'disposed' ? 'disposed' : lost ? 'lost' : 'broken';
+    const [chainOldStatus, setChainOldStatus] = useState<OldPartStatus>(resolveOldStatus(logToEdit?.metadata?.chain_lost, logToEdit?.metadata?.chain_old_status));
+    const [lightOldStatus, setLightOldStatus] = useState<OldPartStatus>(resolveOldStatus(logToEdit?.metadata?.light_lost, logToEdit?.metadata?.light_old_status));
+    const [sinkerOldStatus, setSinkerOldStatus] = useState<OldPartStatus>(resolveOldStatus(logToEdit?.metadata?.sinker_lost, logToEdit?.metadata?.sinker_old_status));
+    const [zincOldStatus, setZincOldStatus] = useState<OldPartStatus>(resolveOldStatus(logToEdit?.metadata?.zinc_lost, logToEdit?.metadata?.zinc_old_status));
+    const [buoyOldStatus, setBuoyOldStatus] = useState<OldPartStatus>(resolveOldStatus(logToEdit?.metadata?.buoy_lost, logToEdit?.metadata?.buoy_old_status));
     const [buoyReplaceReason, setBuoyReplaceReason] = useState(logToEdit?.metadata?.buoy_replace_reason || '');
 
     // History
@@ -149,17 +154,17 @@ export default function MaintenanceDialog({
         if (replaceChain && availableChains.length === 0) loadStock('Ketting', selectedChainId);
         if (replaceLight && availableLights.length === 0) loadStock('Lamp', selectedLightId);
         if (replaceSinker && availableSinkers.length === 0) loadStock('Steen', selectedSinkerId);
-        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting', shackleReplacements[0]?.assetId);
+        if (replaceShackle && availableShackles.length === 0) loadStock('Sluiting', shackleReplacements.map(s => s.assetId).filter(Boolean).join(','));
         if (replaceZinc && availableZincs.length === 0) loadStock('Zinkblok', selectedZincId);
         if (replaceBuoy && availableBuoys.length === 0) loadStock('Boei', selectedBuoyId);
     }, [replaceChain, replaceLight, replaceSinker, replaceShackle, replaceZinc, replaceBuoy]);
 
-    const loadStock = async (category: string, includeAssetId?: string) => {
+    const loadStock = async (category: string, includeAssetIds?: string) => {
         try {
             const url = new URL('/api/inventory/available', window.location.origin);
             url.searchParams.set('category', category);
-            if (includeAssetId) {
-                url.searchParams.set('includeAssetId', includeAssetId);
+            if (includeAssetIds) {
+                url.searchParams.set('includeAssetIds', includeAssetIds);
             }
 
             const response = await fetch(url.toString());
@@ -224,6 +229,23 @@ export default function MaintenanceDialog({
         return buoy.status === 'Maintenance';
     });
 
+    const OldStatusToggle = ({ value, onChange, label }: { value: OldPartStatus, onChange: (v: OldPartStatus) => void, label?: string }) => (
+        <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-bold text-app-text-secondary uppercase">{label || 'Status oud onderdeel'}</label>
+            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit flex-wrap gap-0.5">
+                <button type="button" onClick={() => onChange('broken')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", value === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
+                    Binnenbrengen
+                </button>
+                <button type="button" onClick={() => onChange('disposed')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", value === 'disposed' ? "bg-gray-700 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
+                    Vuilbak
+                </button>
+                <button type="button" onClick={() => onChange('lost')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", value === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
+                    Kwijt
+                </button>
+            </div>
+        </div>
+    );
+
     const handleSave = async () => {
         if (!buoy.id) {
             alert('Ongeldige boei ID');
@@ -249,11 +271,16 @@ export default function MaintenanceDialog({
                     shackles: replaceShackle ? shackleReplacements : null,
                     zinc: replaceZinc ? selectedZincId : null,
                     buoy_lost: buoyOldStatus === 'lost',
+                    buoy_old_status: buoyOldStatus,
                     buoy_replace_reason: replaceBuoy ? buoyReplaceReason : null,
                     chain_lost: chainOldStatus === 'lost',
+                    chain_old_status: chainOldStatus,
                     light_lost: lightOldStatus === 'lost',
+                    light_old_status: lightOldStatus,
                     sinker_lost: sinkerOldStatus === 'lost',
+                    sinker_old_status: sinkerOldStatus,
                     zinc_lost: zincOldStatus === 'lost',
+                    zinc_old_status: zincOldStatus,
                     buoy_cleaned: buoyCleaned,
                     light_tested: lightTested
                 }
@@ -460,12 +487,23 @@ export default function MaintenanceDialog({
                                 const last = history[0];
                                 const meta = last.metadata || {};
                                 const replacements = [];
-                                if (meta.chain) replacements.push({ label: meta.replacement_names?.chain || 'Ketting', lost: meta.chain_lost });
-                                if (meta.light) replacements.push({ label: meta.replacement_names?.light || 'Lamp', lost: meta.light_lost });
-                                if (meta.sinker) replacements.push({ label: meta.replacement_names?.sinker || 'Steen', lost: meta.sinker_lost });
-                                if (meta.buoy) replacements.push({ label: meta.replacement_names?.buoy || 'Boei Body', lost: meta.buoy_lost });
-                                if (meta.shackles && Array.isArray(meta.shackles) && meta.shackles.length > 0) replacements.push({ label: meta.replacement_names?.shackles || `${meta.shackles.length}× Sluiting`, lost: false });
-                                if (meta.zinc) replacements.push({ label: meta.replacement_names?.zinc || 'Zinkblok', lost: meta.zinc_lost });
+                                if (meta.chain) replacements.push({ label: meta.replacement_names?.chain || 'Ketting', lost: meta.chain_lost, oldStatus: meta.chain_old_status });
+                                if (meta.light) replacements.push({ label: meta.replacement_names?.light || 'Lamp', lost: meta.light_lost, oldStatus: meta.light_old_status });
+                                if (meta.sinker) replacements.push({ label: meta.replacement_names?.sinker || 'Steen', lost: meta.sinker_lost, oldStatus: meta.sinker_old_status });
+                                if (meta.buoy) replacements.push({ label: meta.replacement_names?.buoy || 'Boei Body', lost: meta.buoy_lost, oldStatus: meta.buoy_old_status });
+                                if (meta.shackles && Array.isArray(meta.shackles) && meta.shackles.length > 0) {
+                                    let label = `${meta.shackles.length}× Sluiting`;
+                                    if (meta.replacement_names?.shackles) {
+                                        const parts = meta.replacement_names.shackles.split(',').map((n: string) => n.trim());
+                                        const counts = parts.reduce((acc: Record<string, number>, name: string) => {
+                                            acc[name] = (acc[name] || 0) + 1;
+                                            return acc;
+                                        }, {});
+                                        label = Object.entries(counts).map(([name, count]) => (count as number) > 1 ? `${count}× ${name}` : name).join(', ');
+                                    }
+                                    replacements.push({ label, lost: false, oldStatus: 'broken' });
+                                }
+                                if (meta.zinc) replacements.push({ label: meta.replacement_names?.zinc || 'Zinkblok', lost: meta.zinc_lost, oldStatus: meta.zinc_old_status });
                                 return (
                                     <div className="p-4 rounded-xl bg-app-bg/50 border border-app-border space-y-3">
                                         {/* Header */}
@@ -485,16 +523,18 @@ export default function MaintenanceDialog({
                                                 {replacements.map((r, i) => (
                                                     <div key={i} className={clsx(
                                                         'flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border',
-                                                        r.lost
-                                                            ? 'bg-red-100 text-red-900 border-red-300'
-                                                            : 'bg-orange-100 text-orange-900 border-orange-300'
+                                                        r.oldStatus === 'disposed'
+                                                            ? 'bg-gray-100 text-gray-900 border-gray-300'
+                                                            : r.lost
+                                                                ? 'bg-red-100 text-red-900 border-red-300'
+                                                                : 'bg-orange-100 text-orange-900 border-orange-300'
                                                     )}>
                                                         <span>{r.label}</span>
                                                         <span className={clsx(
                                                             'text-[10px] font-bold px-2 py-0.5 rounded-full text-white',
-                                                            r.lost ? 'bg-red-600' : 'bg-orange-600'
+                                                            r.oldStatus === 'disposed' ? 'bg-gray-700' : r.lost ? 'bg-red-600' : 'bg-orange-600'
                                                         )}>
-                                                            {r.lost ? 'Kwijt' : 'Stuk'}
+                                                            {r.oldStatus === 'disposed' ? 'Vuilbak' : r.lost ? 'Kwijt' : 'Onderhoud'}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -547,17 +587,7 @@ export default function MaintenanceDialog({
 
                                 {replaceBuoy && (
                                     <div className="mt-3 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 bg-white/50 dark:bg-black/20 p-4 border border-blue-100 dark:border-blue-800 rounded-lg">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oude boei</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button onClick={() => setBuoyOldStatus('broken')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", buoyOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button onClick={() => setBuoyOldStatus('lost')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", buoyOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Kwijt (Verloren/Aangevaren)
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <OldStatusToggle value={buoyOldStatus} onChange={setBuoyOldStatus} label="Status oude boei" />
 
                                         <div className="space-y-2">
                                             <label className="text-xs font-medium text-app-text-secondary uppercase block">Reden voor vervanging</label>
@@ -597,29 +627,7 @@ export default function MaintenanceDialog({
 
                                 {replaceChain && (
                                     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button
-                                                    onClick={() => setChainOldStatus('broken')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        chainOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button
-                                                    onClick={() => setChainOldStatus('lost')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        chainOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Kwijt (Verloren)
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <OldStatusToggle value={chainOldStatus} onChange={setChainOldStatus} />
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Ketting uit Stock</label>
                                             <AssetPicker
@@ -654,29 +662,7 @@ export default function MaintenanceDialog({
 
                                 {replaceLight && (
                                     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button
-                                                    onClick={() => setLightOldStatus('broken')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        lightOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button
-                                                    onClick={() => setLightOldStatus('lost')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        lightOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Kwijt (Verloren)
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <OldStatusToggle value={lightOldStatus} onChange={setLightOldStatus} />
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Lamp uit Stock</label>
                                             <AssetPicker
@@ -711,29 +697,7 @@ export default function MaintenanceDialog({
 
                                 {replaceSinker && (
                                     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button
-                                                    onClick={() => setSinkerOldStatus('broken')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        sinkerOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button
-                                                    onClick={() => setSinkerOldStatus('lost')}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                        sinkerOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                    )}
-                                                >
-                                                    Kwijt (Verloren)
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <OldStatusToggle value={sinkerOldStatus} onChange={setSinkerOldStatus} />
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Steen uit Stock</label>
                                             <AssetPicker
@@ -779,39 +743,14 @@ export default function MaintenanceDialog({
                                                     </button>
                                                 )}
                                                 <div className="flex flex-col gap-4">
-                                                    <div className="flex flex-col gap-2">
-                                                        <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                                        <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newReps = [...shackleReplacements];
-                                                                    newReps[index].oldStatus = 'broken';
-                                                                    setShackleReplacements(newReps);
-                                                                }}
-                                                                className={clsx(
-                                                                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                                    shackle.oldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                                )}
-                                                            >
-                                                                Stuk (Onderhoud)
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newReps = [...shackleReplacements];
-                                                                    newReps[index].oldStatus = 'lost';
-                                                                    setShackleReplacements(newReps);
-                                                                }}
-                                                                className={clsx(
-                                                                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
-                                                                    shackle.oldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary"
-                                                                )}
-                                                            >
-                                                                Kwijt (Verloren)
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                                    <OldStatusToggle
+                                                        value={shackle.oldStatus as OldPartStatus}
+                                                        onChange={(newStatus) => {
+                                                            const newReps = [...shackleReplacements];
+                                                            newReps[index].oldStatus = newStatus;
+                                                            setShackleReplacements(newReps);
+                                                        }}
+                                                    />
                                                     <div>
                                                         <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuwe Sluiting uit Stock</label>
                                                         <AssetPicker
@@ -860,17 +799,7 @@ export default function MaintenanceDialog({
                                 </div>
                                 {replaceZinc && (
                                     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-[10px] font-bold text-app-text-secondary uppercase">Status oud onderdeel</label>
-                                            <div className="flex p-0.5 bg-app-bg rounded-lg border border-app-border w-fit">
-                                                <button onClick={() => setZincOldStatus('broken')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", zincOldStatus === 'broken' ? "bg-orange-500 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Stuk (Onderhoud)
-                                                </button>
-                                                <button onClick={() => setZincOldStatus('lost')} className={clsx("px-3 py-1 text-xs font-bold rounded-md transition-all", zincOldStatus === 'lost' ? "bg-red-600 text-white shadow-sm" : "text-app-text-secondary hover:text-app-text-primary")}>
-                                                    Kwijt (Verloren)
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <OldStatusToggle value={zincOldStatus} onChange={setZincOldStatus} />
                                         <div>
                                             <label className="text-xs font-medium text-app-text-secondary uppercase mb-1 block">Nieuw Zinkblok uit Stock</label>
                                             <AssetPicker items={availableZincs} value={selectedZincId} onChange={setSelectedZincId} onAddNew={() => openCreateDialog('Zinkblok')} placeholder="Selecteer zinkblok..." />
