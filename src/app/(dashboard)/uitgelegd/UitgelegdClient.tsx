@@ -7,7 +7,7 @@ import {
     Pencil, Undo2, Trash2, Ship, MapPin, Search, ArrowUpDown,
     ArrowUp, ArrowDown, AlertTriangle, Calendar, Bluetooth,
     Navigation, Hammer, Edit2, Check, X as XIcon, Lightbulb, Link, Building2, Wand2,
-    ChevronDown, ChevronUp
+    ChevronDown, ChevronUp, ShieldCheck, Layers
 } from "lucide-react";
 import clsx from "clsx";
 import { DeployedBuoy } from '@/lib/data';
@@ -1056,6 +1056,36 @@ function MaintenanceHistoryDetails({ buoy, onUpdate }: { buoy: DeployedBuoy, onU
                                         log.metadata.sinker_lost ? "bg-red-600" : "bg-orange-600"
                                     )}>
                                         {log.metadata.sinker_lost ? "Kwijt" : "Stuk"}
+                                    </span>
+                                </div>
+                            )}
+                            {log.metadata?.buoy && (
+                                <div className="flex items-center gap-2 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-xl border border-blue-300 text-xs font-semibold">
+                                    <Ship className="w-3.5 h-3.5" />
+                                    <span>{log.metadata.replacement_names?.buoy || "Boei"}</span>
+                                    <span className={clsx(
+                                        "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
+                                        log.metadata.buoy_lost ? "bg-red-600" : "bg-orange-600"
+                                    )}>
+                                        {log.metadata.buoy_lost ? "Kwijt" : "Stuk"}
+                                    </span>
+                                </div>
+                            )}
+                            {log.metadata?.shackles && Array.isArray(log.metadata.shackles) && log.metadata.shackles.length > 0 && (
+                                <div className="flex items-center gap-2 bg-purple-100 text-purple-900 px-3 py-1.5 rounded-xl border border-purple-300 text-xs font-semibold">
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                    <span>{log.metadata.replacement_names?.shackles || `${log.metadata.shackles.length}× Sluiting`}</span>
+                                </div>
+                            )}
+                            {log.metadata?.zinc && (
+                                <div className="flex items-center gap-2 bg-gray-200 text-gray-900 px-3 py-1.5 rounded-xl border border-gray-400 text-xs font-semibold">
+                                    <Layers className="w-3.5 h-3.5" />
+                                    <span>{log.metadata.replacement_names?.zinc || "Zinkblok"}</span>
+                                    <span className={clsx(
+                                        "px-2 py-0.5 rounded-full text-white text-[10px] font-bold",
+                                        log.metadata.zinc_lost ? "bg-red-600" : "bg-orange-600"
+                                    )}>
+                                        {log.metadata.zinc_lost ? "Kwijt" : "Stuk"}
                                     </span>
                                 </div>
                             )}

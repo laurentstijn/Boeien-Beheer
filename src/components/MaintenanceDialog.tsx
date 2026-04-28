@@ -464,6 +464,8 @@ export default function MaintenanceDialog({
                                 if (meta.light) replacements.push({ label: meta.replacement_names?.light || 'Lamp', lost: meta.light_lost });
                                 if (meta.sinker) replacements.push({ label: meta.replacement_names?.sinker || 'Steen', lost: meta.sinker_lost });
                                 if (meta.buoy) replacements.push({ label: meta.replacement_names?.buoy || 'Boei Body', lost: meta.buoy_lost });
+                                if (meta.shackles && Array.isArray(meta.shackles) && meta.shackles.length > 0) replacements.push({ label: meta.replacement_names?.shackles || `${meta.shackles.length}× Sluiting`, lost: false });
+                                if (meta.zinc) replacements.push({ label: meta.replacement_names?.zinc || 'Zinkblok', lost: meta.zinc_lost });
                                 return (
                                     <div className="p-4 rounded-xl bg-app-bg/50 border border-app-border space-y-3">
                                         {/* Header */}
