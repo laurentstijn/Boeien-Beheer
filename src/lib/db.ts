@@ -815,8 +815,19 @@ export interface Customer {
 export async function getCustomers(): Promise<Customer[]> {
     const settings = await getAppSettings();
     const customerSetting = settings.find(s => s.key === 'customers');
-    if (customerSetting && customerSetting.value && Array.isArray(customerSetting.value.list)) {
-        return customerSetting.value.list;
+    
+    if (customerSetting && customerSetting.value) {
+        let val = customerSetting.value;
+        if (typeof val === 'string') {
+            try {
+                val = JSON.parse(val);
+            } catch (e) {
+                console.error("Failed to parse customers setting", e);
+            }
+        }
+        if (val && Array.isArray(val.list)) {
+            return val.list;
+        }
     }
     return [];
 }
