@@ -183,10 +183,10 @@ export default async function KlantRapportPage({ params, searchParams }: {
                     overflow: hidden;
                 }
                 
-                .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #2563eb; padding-bottom:18px; margin-bottom:32px; }
+                .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1a6d8d; padding-bottom:18px; margin-bottom:32px; }
                 .rp-logo { display:flex; align-items:center; gap:10px; }
-                .rp-logo-icon { width:38px; height:38px; background:#2563eb; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
-                .rp-title { font-size:22px; font-weight:800; color:#1e3a8a; margin:0; }
+                .rp-logo-icon { width:38px; height:38px; background:#1a6d8d; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
+                .rp-title { font-size:22px; font-weight:800; color:#1a6d8d; margin:0; }
                 .rp-sub { font-size:11px; color:#64748b; margin:3px 0 0; }
                 .rp-meta { text-align:right; font-size:11px; color:#64748b; line-height:1.7; }
                 
@@ -194,7 +194,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 .rp-buoy-header { background: #f8fafc; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }
                 .rp-buoy-title { font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; display:flex; justify-content: space-between; align-items: center; }
                 .rp-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:9px; font-weight:700; text-transform:uppercase; margin-right:4px; }
-                .rp-badge-blue { background:#dbeafe; color:#1d4ed8; }
+                .rp-badge-blue { background:#e8f4f8; color:#1a6d8d; }
                 
                 .rp-grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; }
                 .rp-fl { font-size:9px; font-weight:700; text-transform:uppercase; color:#94a3b8; margin-bottom:2px; }
@@ -318,7 +318,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                                                     {(metadata.buoy_cleaned || metadata.light_tested) && (
                                                         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                                                            {metadata.buoy_cleaned && <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 600 }}>✓ Boei afgespoten</span>}
+                                                            {metadata.buoy_cleaned && <span style={{ background: '#e8f4f8', color: '#1a6d8d', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 600 }}>✓ Boei afgespoten</span>}
                                                             {metadata.light_tested && <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 600 }}>✓ Lamp getest</span>}
                                                         </div>
                                                     )}
