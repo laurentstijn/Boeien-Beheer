@@ -258,7 +258,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                     <div><div className="rp-fl">Locatie</div><div className="rp-fv">{buoy.location}</div></div>
                                     <div><div className="rp-fl">Datum Uitleggen</div><div className="rp-fv">{fmt(buoy.customerDeployDate || buoy.deploymentDate)}</div></div>
                                     <div><div className="rp-fl">Datum Ophalen</div><div className="rp-fv">{fmt(buoy.customerPickupDate)}</div></div>
-                                    <div><div className="rp-fl">Aantal Acties</div><div className="rp-fv">{buoy.logs.length + 1}</div></div> {/* +1 for Initial Deployment */}
+                                    <div><div className="rp-fl">Aantal Acties</div><div className="rp-fv">{buoy.logs.length + 1 + (buoy.customerPickupDate ? 1 : 0)}</div></div>
                                 </div>
                             </div>
 
@@ -333,6 +333,18 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                             </tr>
                                         )
                                     })}
+
+                                    {/* Final Retrieval Row */}
+                                    {buoy.customerPickupDate && (
+                                        <tr className="rp-timeline-tr">
+                                            <td className="rp-timeline-td rp-bold">{fmt(buoy.customerPickupDate)}</td>
+                                            <td className="rp-timeline-td">-</td>
+                                            <td className="rp-timeline-td">
+                                                <strong>Boei Binnengehaald</strong>
+                                                <div className="rp-muted" style={{ marginTop: '4px' }}>Huurperiode beëindigd en boei is teruggehaald.</div>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
