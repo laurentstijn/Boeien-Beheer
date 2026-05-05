@@ -69,30 +69,6 @@ function fmt(dateStr: string | null) {
     }
 }
 
-function formatComponentReplacement(key: string, metadata: any) {
-    const componentNames: Record<string, string> = {
-        chain: 'Ketting',
-        light: 'Lamp',
-        sinker: 'Steen',
-        shackle: 'Sluiting',
-        zinc: 'Zinkblok',
-        buoy: 'Boei (Body)'
-    };
-    const name = metadata.replacement_names?.[key] || '(Onbekend)';
-    const lost = metadata[`${key}_lost`];
-
-    return (
-        <div key={key} className="rp-comp-replace">
-            <span className="rp-comp-label">{componentNames[key] || key}:</span> Uitgehaald/Vervangen: {name} {lost ? <span className="rp-text-red rp-bold">(Verloren/Aangevaren)</span> : ''}
-            {key === 'buoy' && metadata.buoy_replace_reason && (
-                <div className="rp-notes-inline rp-text-red">
-                    Reden: {metadata.buoy_replace_reason}
-                </div>
-            )}
-        </div>
-    );
-}
-
 export default async function KlantRapportPage({ params, searchParams }: {
     params: Promise<{ customerName: string }>,
     searchParams: Promise<{ embedded?: string, buoys?: string }>
@@ -223,7 +199,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
             `}</style>
 
             {/* Print Background via IMG tag for forced printing without checkbox */}
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '297mm', zIndex: 0, pointerEvents: 'none', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
                 <img 
                     src="/template_bg_hq.png" 
                     alt="Briefpapier" 
@@ -292,28 +268,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                         <td className="rp-timeline-td">
                                             <strong>Initieel Uitgelegd</strong>
                                             <div className="rp-muted" style={{ marginTop: '4px', marginBottom: '8px' }}>Boei werd geplaatst in deze huurperiode.</div>
-                                            {(() => {
-                                                const raw = report.rawBuoys?.find(r => r.id === buoy.id);
-                                                const meta = raw?.metadata || {};
-                                                const parts = [];
-                                                if (meta.chain?.type) parts.push({ label: 'Ketting', value: meta.chain.type });
-                                                if (meta.sinker?.type) parts.push({ label: 'Steen', value: meta.sinker.type });
-                                                if (meta.light?.type) parts.push({ label: 'Lamp', value: meta.light.type });
-                                                if (meta.topmark?.type) parts.push({ label: 'Topteken', value: meta.topmark.type });
-                                                
-                                                if (parts.length > 0) {
-                                                    return (
-                                                        <div style={{ marginTop: '8px' }}>
-                                                            {parts.map(p => (
-                                                                <div key={p.label} className="rp-comp-replace">
-                                                                    <span className="rp-comp-label">{p.label}:</span> Geplaatst: {p.value}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
+                                            {/* Components removed for cleaner layout */}
                                         </td>
                                     </tr>
 
@@ -338,11 +293,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                                         </div>
                                                     )}
 
-                                                    {replacedKeys.length > 0 && (
-                                                        <div style={{ marginTop: '8px' }}>
-                                                            {replacedKeys.map(k => formatComponentReplacement(k, metadata))}
-                                                        </div>
-                                                    )}
+                                                    {/* Removed replaced component blocks */}
                                                 </td>
                                             </tr>
                                         )
