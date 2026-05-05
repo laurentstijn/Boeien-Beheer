@@ -168,7 +168,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                     .print-only-thead { display: none; }
                 }
 
-                .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; width: 100%; border-collapse: collapse; }
+                .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; width: 100%; }
                 .print-bg {
                     position: absolute;
                     top: 0;
@@ -233,29 +233,30 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                 {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
 
-                <table className="rp-container">
-                    <thead className="print-only-thead">
-                        <tr><td style={{ height: '220px', padding: 0, border: 'none' }}></td></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style={{ padding: 0, border: 'none' }}>
-                            {/* Header */}
-                            <div className="rp-header">
-                                <div className="rp-logo">
-                                    <div className="rp-logo-icon">⚓</div>
-                                    <div>
-                                        <p className="rp-title">Klant Historiek Rapport</p>
-                                        <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
+                <div className="rp-container">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+                        <thead className="print-only-thead">
+                            <tr><td style={{ height: '220px', padding: 0, border: 'none' }}></td></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style={{ padding: 0, border: 'none' }}>
+                                {/* Header */}
+                                <div className="rp-header">
+                                    <div className="rp-logo">
+                                        <div className="rp-logo-icon">⚓</div>
+                                        <div>
+                                            <p className="rp-title">Klant Historiek Rapport</p>
+                                            <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="rp-meta">
+                                        <div>Rapportdatum: <strong>{today}</strong></div>
+                                        <div style={{ marginTop: 4 }}>
+                                            <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="rp-meta">
-                                    <div>Rapportdatum: <strong>{today}</strong></div>
-                                    <div style={{ marginTop: 4 }}>
-                                        <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </td></tr>
+                            </td></tr>
 
                         {report.buoys.length === 0 ? (
                             <tr><td style={{ padding: 0, border: 'none' }}>
