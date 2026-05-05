@@ -144,19 +144,15 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 /* Content adjustments for print */
                 @media print {
                     .rp-page-break { page-break-after: always; }
-                    @page {
-                        margin-top: 55mm; /* Clears top header */
-                        margin-left: 30mm; /* Clears left blue line */
-                        margin-right: 15mm;
-                        margin-bottom: 20mm;
-                        size: A4;
-                    }
                     html, body, #wrapper, main {
                         height: auto !important;
                         overflow: visible !important;
                     }
                     .rp-container {
-                        padding: 0 !important;
+                        padding-top: 0 !important;
+                        padding-right: 60px !important;
+                        padding-bottom: 80px !important;
+                        padding-left: 120px !important;
                         max-width: none !important;
                         margin: 0 !important;
                     }
@@ -165,9 +161,14 @@ export default async function KlantRapportPage({ params, searchParams }: {
                         top: 0;
                         left: 0;
                     }
+                    .print-only-thead { display: table-header-group; }
                 }
 
-                .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; }
+                @media screen {
+                    .print-only-thead { display: none; }
+                }
+
+                .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; width: 100%; border-collapse: collapse; }
                 .print-bg {
                     position: absolute;
                     top: 0;
@@ -232,65 +233,74 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                 {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
 
-                <div className="rp-container">
-                {/* Header */}
-                <div className="rp-header">
-                    <div className="rp-logo">
-                        <div className="rp-logo-icon">⚓</div>
-                        <div>
-                            <p className="rp-title">Klant Historiek Rapport</p>
-                            <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
-                        </div>
-                    </div>
-                    <div className="rp-meta">
-                        <div>Rapportdatum: <strong>{today}</strong></div>
-                        <div style={{ marginTop: 4 }}>
-                            <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
-                        </div>
-                    </div>
-                </div>
-
-                {report.buoys.length === 0 ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px' }}>
-                        Geen boeien gevonden voor deze klant.
-                    </div>
-                ) : (
-                    report.buoys.map((buoy, index) => (
-                        <div key={buoy.id} className="rp-buoy-section">
-                            <div className="rp-buoy-header">
-                                <h3 className="rp-buoy-title">
-                                    <span>{buoy.name}</span>
-                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{buoy.buoyType}</span>
-                                </h3>
-                                <div className="rp-grid-4">
-                                    <div><div className="rp-fl">Locatie</div><div className="rp-fv">{buoy.location}</div></div>
-                                    <div><div className="rp-fl">Datum Uitleggen</div><div className="rp-fv">{fmt(buoy.customerDeployDate || buoy.deploymentDate)}</div></div>
-                                    <div><div className="rp-fl">Datum Ophalen</div><div className="rp-fv">{fmt(buoy.customerPickupDate)}</div></div>
-                                    <div><div className="rp-fl">Aantal Acties</div><div className="rp-fv">{buoy.logs.length + 1 + (buoy.customerPickupDate ? 1 : 0)}</div></div>
+                <table className="rp-container">
+                    <thead className="print-only-thead">
+                        <tr><td style={{ height: '220px', padding: 0, border: 'none' }}></td></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style={{ padding: 0, border: 'none' }}>
+                            {/* Header */}
+                            <div className="rp-header">
+                                <div className="rp-logo">
+                                    <div className="rp-logo-icon">⚓</div>
+                                    <div>
+                                        <p className="rp-title">Klant Historiek Rapport</p>
+                                        <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
+                                    </div>
+                                </div>
+                                <div className="rp-meta">
+                                    <div>Rapportdatum: <strong>{today}</strong></div>
+                                    <div style={{ marginTop: 4 }}>
+                                        <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
+                                    </div>
                                 </div>
                             </div>
+                        </td></tr>
 
-                            <table className="rp-timeline-table">
-                                <thead>
-                                    <tr>
-                                        <th className="rp-timeline-th" style={{ width: '15%' }}>Datum</th>
-                                        <th className="rp-timeline-th" style={{ width: '20%' }}>Technieker</th>
-                                        <th className="rp-timeline-th" style={{ width: '65%' }}>Actie & Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {/* Initial Deployment Row */}
-                                    <tr className="rp-timeline-tr">
-                                        <td className="rp-timeline-td rp-bold">{fmt(buoy.customerDeployDate || buoy.deploymentDate)}</td>
-                                        <td className="rp-timeline-td">-</td>
-                                        <td className="rp-timeline-td">
-                                            <strong>Initieel Uitgelegd</strong>
-                                            <div className="rp-muted" style={{ marginTop: '4px', marginBottom: '8px' }}>Boei werd geplaatst in deze huurperiode.</div>
-                                            {/* Components removed for cleaner layout */}
-                                        </td>
-                                    </tr>
+                        {report.buoys.length === 0 ? (
+                            <tr><td style={{ padding: 0, border: 'none' }}>
+                                <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px' }}>
+                                    Geen boeien gevonden voor deze klant.
+                                </div>
+                            </td></tr>
+                        ) : (
+                            report.buoys.map((buoy, index) => (
+                                <tr key={buoy.id}><td style={{ padding: 0, border: 'none' }}>
+                                    <div className="rp-buoy-section">
+                                        <div className="rp-buoy-header">
+                                            <h3 className="rp-buoy-title">
+                                                <span>{buoy.name}</span>
+                                                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{buoy.buoyType}</span>
+                                            </h3>
+                                            <div className="rp-grid-4">
+                                                <div><div className="rp-fl">Locatie</div><div className="rp-fv">{buoy.location}</div></div>
+                                                <div><div className="rp-fl">Datum Uitleggen</div><div className="rp-fv">{fmt(buoy.customerDeployDate || buoy.deploymentDate)}</div></div>
+                                                <div><div className="rp-fl">Datum Ophalen</div><div className="rp-fv">{fmt(buoy.customerPickupDate)}</div></div>
+                                                <div><div className="rp-fl">Aantal Acties</div><div className="rp-fv">{buoy.logs.length + 1 + (buoy.customerPickupDate ? 1 : 0)}</div></div>
+                                            </div>
+                                        </div>
 
-                                    {/* Maintenance Logs */}
+                                        <table className="rp-timeline-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="rp-timeline-th" style={{ width: '15%' }}>Datum</th>
+                                                    <th className="rp-timeline-th" style={{ width: '20%' }}>Technieker</th>
+                                                    <th className="rp-timeline-th" style={{ width: '65%' }}>Actie & Details</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {/* Initial Deployment Row */}
+                                                <tr className="rp-timeline-tr">
+                                                    <td className="rp-timeline-td rp-bold">{fmt(buoy.customerDeployDate || buoy.deploymentDate)}</td>
+                                                    <td className="rp-timeline-td">-</td>
+                                                    <td className="rp-timeline-td">
+                                                        <strong>Initieel Uitgelegd</strong>
+                                                        <div className="rp-muted" style={{ marginTop: '4px', marginBottom: '8px' }}>Boei werd geplaatst in deze huurperiode.</div>
+                                                        {/* Components removed for cleaner layout */}
+                                                    </td>
+                                                </tr>
+
+                                                {/* Maintenance Logs */}
                                     {buoy.logs.map(log => {
                                         const metadata = log.metadata || {};
                                         const replacedKeys = ['buoy', 'light', 'sinker', 'shackle', 'zinc', 'chain'].filter(k => metadata[k] || metadata[`${k}_lost`]);
@@ -331,12 +341,17 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                 </tbody>
                             </table>
                         </div>
-                    ))
-                )}
-                
-                <div className="rp-footer hidden print:flex">
-                    <span style={{ color: 'transparent' }}>_</span>
-                </div>
+                                </td></tr>
+                            ))
+                        )}
+                        
+                        <tr><td style={{ padding: 0, border: 'none' }}>
+                            <div className="rp-footer hidden print:flex">
+                                <span style={{ color: 'transparent' }}>_</span>
+                            </div>
+                        </td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
