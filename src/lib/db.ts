@@ -39,7 +39,7 @@ export async function getZoneFilter(): Promise<string | null> {
     }
 }
 
-export async function getDeployedBuoys(): Promise<DeployedBuoy[]> {
+export async function getDeployedBuoys(includeArchived: boolean = false): Promise<DeployedBuoy[]> {
     const zoneFilter = await getZoneFilter();
     let query = supabaseAdmin
         .from('deployed_buoys')
@@ -59,6 +59,10 @@ export async function getDeployedBuoys(): Promise<DeployedBuoy[]> {
 
     if (zoneFilter) {
         query = query.eq('zone', zoneFilter);
+    }
+
+    if (!includeArchived) {
+        query = query.neq('status', 'Archived');
     }
 
     const { data, error } = await query;
@@ -689,14 +693,26 @@ export async function retrieveBuoyWithDispositions(id: string, dispositions: Rec
         }
     }
 
-    // 3. Delete the deployment record
+    // 3. Archive the deployment record instead of deleting
+    const archiveDate = new Date().toISOString().split('T')[0];
+    
+    const { data: buoy } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', id).single();
+    const newMetadata = {
+        ...(buoy?.metadata || {}),
+        archived_date: archiveDate,
+        customer_pickup_date: archiveDate // For backwards compatibility
+    };
+
     const { error } = await supabaseAdmin
         .from('deployed_buoys')
-        .delete()
+        .update({
+            status: 'Archived',
+            metadata: newMetadata,
+        })
         .eq('id', id);
 
     if (error) {
-        console.error('Error deleting deployment during retrieval:', error);
+        console.error('Error archiving deployment during retrieval:', error);
         throw error;
     }
 }
@@ -783,4 +799,41 @@ export async function updateAppSetting(key: string, value: any) {
         console.error('Error updating app setting:', error);
         throw error;
     }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CUSTOMERS MANAGEMENT (Stored in app_settings)
+// ─────────────────────────────────────────────────────────────
+
+export interface Customer {
+    id: string;
+    name: string;
+    notes?: string;
+    contact?: string;
+}
+
+export async function getCustomers(): Promise<Customer[]> {
+    const settings = await getAppSettings();
+    const customerSetting = settings.find(s => s.key === 'customers');
+    if (customerSetting && customerSetting.value && Array.isArray(customerSetting.value.list)) {
+        return customerSetting.value.list;
+    }
+    return [];
+}
+
+export async function updateCustomer(customer: Customer) {
+    const customers = await getCustomers();
+    const idx = customers.findIndex(c => c.id === customer.id);
+    if (idx >= 0) {
+        customers[idx] = customer;
+    } else {
+        customers.push(customer);
+    }
+    await updateAppSetting('customers', { list: customers });
+}
+
+export async function deleteCustomer(id: string) {
+    const customers = await getCustomers();
+    const newCustomers = customers.filter(c => c.id !== id);
+    await updateAppSetting('customers', { list: newCustomers });
 }

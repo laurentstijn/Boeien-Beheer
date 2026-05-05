@@ -1,17 +1,17 @@
 export const dynamic = 'force-dynamic';
-import { getAssets, getDeployedBuoys, getZoneFilter } from "@/lib/db";
+import { getAssets, getDeployedBuoys, getZoneFilter, getCustomers } from "@/lib/db";
 import UitleggenClient from "./UitleggenClient";
 
 export default async function UitleggenPage() {
     const activeZone = await getZoneFilter();
-    // Parallel fetch of all available in-stock assets for deployment
-    const [availableBuoys, availableChains, availableStones, availableTopmarks, availableLights, existingBuoys] = await Promise.all([
+    const [availableBuoys, availableChains, availableStones, availableTopmarks, availableLights, existingBuoys, customers] = await Promise.all([
         getAssets("Boei"),
         getAssets("Ketting"),
         getAssets("Steen"),
         getAssets("Topteken"),
         getAssets("Lamp"),
-        getDeployedBuoys()
+        getDeployedBuoys(),
+        getCustomers()
     ]);
 
     // Filter for only in_stock assets
@@ -30,6 +30,7 @@ export default async function UitleggenPage() {
             availableLights={inStockLights}
             existingBuoys={existingBuoys}
             activeZone={activeZone}
+            customers={customers}
         />
     );
 }

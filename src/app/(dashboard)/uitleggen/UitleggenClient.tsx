@@ -29,6 +29,7 @@ interface UitleggenClientProps {
     availableLights: any[];
     existingBuoys: DeployedBuoy[];
     activeZone: string | null;
+    customers: any[];
 }
 
 // Shared helper for technical asset labels
@@ -274,7 +275,8 @@ export default function UitleggenClient({
     availableTopmarks,
     availableLights,
     existingBuoys,
-    activeZone
+    activeZone,
+    customers
 }: UitleggenClientProps) {
     const router = useRouter();
 
@@ -638,14 +640,24 @@ export default function UitleggenClient({
 
                                     {formData.isExternalCustomer && (
                                         <div className="animate-in slide-in-from-top-2 duration-200">
-                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 mb-1.5 block">Klantnaam / Bedrijf</label>
-                                            <input
-                                                type="text"
-                                                placeholder="Voer naam in..."
-                                                value={formData.customerName}
-                                                onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                                                className="w-full bg-white border border-blue-200 rounded-xl px-4 py-3 text-sm text-app-text-primary focus:border-blue-500 focus:outline-none transition-all shadow-sm"
-                                            />
+                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 mb-1.5 block">Kies Klant / Project</label>
+                                            {customers && customers.length > 0 ? (
+                                                <select
+                                                    value={formData.customerName}
+                                                    onChange={e => setFormData({ ...formData, customerName: e.target.value })}
+                                                    className="w-full bg-white border border-blue-200 rounded-xl px-4 py-3 text-sm text-app-text-primary focus:border-blue-500 focus:outline-none transition-all shadow-sm"
+                                                    required={formData.isExternalCustomer}
+                                                >
+                                                    <option value="" disabled>-- Selecteer een klant --</option>
+                                                    {customers.map(c => (
+                                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="text-sm text-app-text-secondary bg-white p-3 rounded-xl border border-blue-200">
+                                                    Geen klanten gevonden. Maak er eerst een aan via het menu "Klanten & Projecten".
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

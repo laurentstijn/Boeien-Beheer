@@ -146,6 +146,7 @@ export default function EditDeployedBuoyDialog({
     const [status, setStatus] = useState(buoy.status);
     const [tideRestriction, setTideRestriction] = useState(buoy.tideRestriction || 'Altijd');
     const [lightCharacter, setLightCharacter] = useState(buoy.lightCharacter || '');
+    const [maintenanceInterval, setMaintenanceInterval] = useState<number>(buoy.metadata?.maintenance_interval_weeks || 45);
     const [selectedConfigId, setSelectedConfigId] = useState(() => {
         if (buoy.buoyConfigId) return buoy.buoyConfigId;
         // Try to find a match by name in buoyConfigurations
@@ -394,6 +395,7 @@ export default function EditDeployedBuoyDialog({
                     ...buoy.metadata,
                     color: selectedColor,
                     boei_soort: boeiSoort,
+                    maintenance_interval_weeks: maintenanceInterval,
                     external_customer: isExternalCustomer,
                     customer_name: isExternalCustomer ? customerName : null,
                     customer_deploy_date: isExternalCustomer ? customerDeployDate : null,
@@ -426,6 +428,7 @@ export default function EditDeployedBuoyDialog({
                         ...buoy.metadata,
                         color: selectedColor,
                         boei_soort: boeiSoort,
+                        maintenance_interval_weeks: maintenanceInterval,
                         external_customer: isExternalCustomer,
                         customer_name: isExternalCustomer ? customerName : null,
                         customer_deploy_date: isExternalCustomer ? customerDeployDate : null,
@@ -635,18 +638,29 @@ export default function EditDeployedBuoyDialog({
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-wider mb-1.5">Status</label>
-                            <select
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                                className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none"
-                            >
-                                <option value="OK">Zichtbaar / OK</option>
-                                <option value="Hidden">Verborgen</option>
-                                <option value="Maintenance">Onderhoud nodig</option>
-                                <option value="Lost">Vermist</option>
-                            </select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-wider mb-1.5">Status</label>
+                                <select
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none"
+                                >
+                                    <option value="OK">Zichtbaar / OK</option>
+                                    <option value="Hidden">Verborgen</option>
+                                    <option value="Maintenance">Onderhoud nodig</option>
+                                    <option value="Lost">Vermist</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-app-text-secondary uppercase tracking-wider mb-1.5">Onderhoudsinterval (weken)</label>
+                                <input
+                                    type="number"
+                                    value={maintenanceInterval}
+                                    onChange={(e) => setMaintenanceInterval(parseInt(e.target.value) || 0)}
+                                    className="w-full bg-app-bg border border-app-border rounded-lg px-3 py-2 text-sm text-app-text-primary focus:outline-none"
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

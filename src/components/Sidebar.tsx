@@ -58,6 +58,7 @@ export function Sidebar({ counts = {}, isOpen, onClose }: SidebarProps) {
             title: null,
             items: [
                 { name: "Uitgelegd / Onderhoud", href: "/uitgelegd", icon: Ship, count: null },
+                { name: "Klanten & Projecten", href: "/klanten", icon: Building2, count: null },
                 { name: "Stock Overzicht", href: "/overzicht", icon: LayoutDashboard, count: null },
                 { name: "Notities / Handleidingen", href: "/notities", icon: FileText, count: null },
             ]

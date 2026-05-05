@@ -22,21 +22,21 @@ export async function recalculateBuoyMaintenance(buoyId: string) {
     const latestMetadata = latestLog.metadata || {};
     const actualLastDate = latestLog.service_date;
 
-    // We calculate the next_service_due directly from the absolute latest log, regardless of status.
-    let next_service_due = null;
-    if (latestLog && latestLog.service_date) {
-        const d = new Date(latestLog.service_date);
-        d.setMonth(d.getMonth() + 6);
-        next_service_due = d.toISOString().split('T')[0];
-    }
-
-    // 2. Update Deployed Buoy main table
-    // Fetch current buoy to merge metadata if needed, though usually we want top-level fields to match last log
+    // 2. Fetch current buoy to merge metadata and get interval configuration
     const { data: buoy } = await supabase
         .from('deployed_buoys')
         .select('metadata')
         .eq('id', buoyId)
         .single();
+
+    // We calculate the next_service_due directly from the absolute latest log, regardless of status.
+    let next_service_due = null;
+    if (latestLog && latestLog.service_date) {
+        const d = new Date(latestLog.service_date);
+        const intervalWeeks = latestMetadata.maintenance_interval_weeks || buoy?.metadata?.maintenance_interval_weeks || 45;
+        d.setDate(d.getDate() + (intervalWeeks * 7));
+        next_service_due = d.toISOString().split('T')[0];
+    }
 
     const mergedMetadata = {
         ...(buoy?.metadata || {}),

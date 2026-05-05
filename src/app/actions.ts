@@ -1402,3 +1402,22 @@ export async function getActiveZoneContextAction() {
         activeZone
     };
 }
+
+export async function bulkUpdateMaintenanceInterval(buoyIds: string[], intervalWeeks: number) {
+    try {
+        for (const id of buoyIds) {
+            const { data: buoy } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', id).single();
+            if (buoy) {
+                const newMetadata = { ...buoy.metadata, maintenance_interval_weeks: intervalWeeks };
+                await supabaseAdmin.from('deployed_buoys').update({ metadata: newMetadata }).eq('id', id);
+                await recalculateBuoyMaintenance(id);
+            }
+        }
+        revalidatePath('/uitgelegd');
+        return { success: true };
+    } catch (e: any) {
+        console.error('Bulk update interval error:', e);
+        return { success: false, message: e.message };
+    }
+}
+

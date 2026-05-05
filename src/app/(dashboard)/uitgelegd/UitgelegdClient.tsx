@@ -16,6 +16,7 @@ import MaintenanceDialog from '@/components/MaintenanceDialog';
 import RetrieveBuoyDialog from './RetrieveBuoyDialog';
 import { ChainIcon } from '@/components/ChainIcon';
 import { StoneIcon } from '@/components/StoneIcon';
+import { bulkUpdateMaintenanceInterval } from '@/app/actions';
 
 interface UitgelegdClientProps {
     initialBuoys: DeployedBuoy[];
@@ -41,6 +42,22 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
     const [maintenanceBuoy, setMaintenanceBuoy] = useState<DeployedBuoy | null>(null);
     const [plannedEntries, setPlannedEntries] = useState<any[]>([]);
     const [retrievingBuoy, setRetrievingBuoy] = useState<DeployedBuoy | null>(null);
+    const [showBulkIntervalModal, setShowBulkIntervalModal] = useState(false);
+    const [bulkIntervalWeeks, setBulkIntervalWeeks] = useState(45);
+    const [isUpdatingBulk, setIsUpdatingBulk] = useState(false);
+
+    const handleBulkIntervalUpdate = async () => {
+        setIsUpdatingBulk(true);
+        const ids = filteredAndSortedBuoys.map(b => b.id);
+        const res = await bulkUpdateMaintenanceInterval(ids, bulkIntervalWeeks);
+        setIsUpdatingBulk(false);
+        if (res.success) {
+            setShowBulkIntervalModal(false);
+            alert(`${ids.length} boeien geüpdatet met een interval van ${bulkIntervalWeeks} weken.`);
+        } else {
+            alert('Fout bij bulk update: ' + res.message);
+        }
+    };
 
     const getBuoyDisplayColor = (b: any) => {
         if (!b) return 'Yellow';
@@ -463,6 +480,13 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                                         </button>
                                     )}
                                 </div>
+                                <button
+                                    onClick={() => setShowBulkIntervalModal(true)}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
+                                >
+                                    <Hammer className="w-4 h-4" />
+                                    Interval
+                                </button>
                             </div>
                         </div>
 
@@ -901,6 +925,51 @@ export default function UitgelegdClient({ initialBuoys, buoyConfigurations, avai
                             />
                         )
                     }
+                    
+                    {showBulkIntervalModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isUpdatingBulk && setShowBulkIntervalModal(false)} />
+                            <div className="relative bg-app-surface w-full max-w-md rounded-xl shadow-2xl border border-app-border overflow-hidden">
+                                <div className="p-6">
+                                    <h2 className="text-xl font-black text-app-text-primary mb-2 flex items-center gap-2">
+                                        <Hammer className="w-6 h-6 text-blue-500" />
+                                        Bulk Onderhoudsinterval
+                                    </h2>
+                                    <p className="text-sm text-app-text-secondary mb-6 leading-relaxed">
+                                        Stel het onderhoudsinterval in voor <strong>alle {filteredAndSortedBuoys.length}</strong> momenteel gefilterde boeien.
+                                    </p>
+                                    
+                                    <div className="mb-6">
+                                        <label className="block text-xs font-bold text-app-text-secondary uppercase tracking-wider mb-2">Interval in weken</label>
+                                        <input
+                                            type="number"
+                                            value={bulkIntervalWeeks}
+                                            onChange={(e) => setBulkIntervalWeeks(parseInt(e.target.value) || 0)}
+                                            className="w-full bg-app-bg border border-app-border rounded-lg px-4 py-3 text-lg font-bold text-app-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                            min="1"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center gap-3 mt-8">
+                                        <button
+                                            onClick={() => setShowBulkIntervalModal(false)}
+                                            disabled={isUpdatingBulk}
+                                            className="flex-1 px-4 py-3 bg-app-bg hover:bg-app-surface-hover text-app-text-primary text-sm font-bold rounded-xl transition-all border border-app-border disabled:opacity-50"
+                                        >
+                                            Annuleren
+                                        </button>
+                                        <button
+                                            onClick={handleBulkIntervalUpdate}
+                                            disabled={isUpdatingBulk || bulkIntervalWeeks <= 0}
+                                            className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center"
+                                        >
+                                            {isUpdatingBulk ? 'Updaten...' : 'Toepassen'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div >
