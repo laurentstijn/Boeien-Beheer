@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DeployedBuoy } from '@/lib/data';
 import { Customer } from '@/lib/db';
-import { Plus, Users, Search, Building2, Phone, AlignLeft, Edit2, Archive, MapPin, Calendar, FileText, Layers, X, CheckSquare, Square } from 'lucide-react';
+import { Plus, Users, Search, Building2, Phone, AlignLeft, Edit2, Archive, MapPin, Calendar, FileText, Layers, X, CheckSquare, Square, Printer } from 'lucide-react';
 import { BuoyIcon } from '@/components/BuoyIcon';
 import clsx from 'clsx';
 import { updateCustomer, deleteCustomer } from './actions'; // I will need to create server actions for this
@@ -25,6 +25,7 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
     // Report selection
     const [selectedReportBuoys, setSelectedReportBuoys] = useState<Set<string>>(new Set());
     const [showReportPopup, setShowReportPopup] = useState(false);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const filteredCustomers = customers.filter(c => 
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -408,11 +409,21 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
                                 <Layers className="w-5 h-5 text-purple-500" /> 
                                 Klant Historiek Rapport ({selectedReportBuoys.size > 0 ? `${selectedReportBuoys.size} boeien geselecteerd` : 'Alle boeien'})
                             </h2>
-                            <button onClick={() => setShowReportPopup(false)} className="p-1.5 hover:bg-app-surface-hover rounded-lg text-app-text-secondary transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => iframeRef.current?.contentWindow?.print()} 
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    Afdrukken / PDF
+                                </button>
+                                <button onClick={() => setShowReportPopup(false)} className="p-1.5 hover:bg-app-surface-hover rounded-lg text-app-text-secondary transition-colors ml-2">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                         <iframe
+                            ref={iframeRef}
                             src={`/rapport/klant/${encodeURIComponent(selectedCustomer.name)}?embedded=true${selectedReportBuoys.size > 0 ? `&buoys=${Array.from(selectedReportBuoys).join(',')}` : ''}`}
                             className="w-full flex-1 bg-white"
                         />

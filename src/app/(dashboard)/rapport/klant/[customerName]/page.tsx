@@ -211,7 +211,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
             `}</style>
 
             {/* Print Background */}
-            <img src="/template_bg.png" className="hidden print:block fixed top-0 left-0 w-screen h-screen object-cover -z-50 opacity-100" style={{ margin: 0, padding: 0 }} alt="" />
+            <img src="/template_bg.png" className="fixed top-0 left-0 w-screen h-screen object-cover -z-50 opacity-100" style={{ margin: 0, padding: 0 }} alt="" />
 
             {!isEmbedded && <div className="no-print"><PrintButton /></div>}
 
