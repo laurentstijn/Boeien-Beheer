@@ -140,6 +140,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                         color: #000;
                         z-index: 100;
                     }
+                }
 
                 /* Content adjustments for print */
                 @media print {
