@@ -209,27 +209,37 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 .rp-footer { margin-top:40px; border-top:1px solid #e2e8f0; padding-top:14px; display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; }
                 ${isEmbedded ? '.no-embedded { display: none !important; }' : ''}
                 
+                body { 
+                    background-color: white !important; 
+                    background-image: url('/template_bg.png');
+                    background-size: 100% auto;
+                    background-repeat: repeat-y;
+                    background-attachment: scroll; /* Use scroll so it stretches with the content and repeats */
+                    background-position: top center;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+
                 @media print {
                     .rp-page-break { page-break-after: always; }
                     @page {
                         margin: 0;
                         size: A4;
                     }
+                    html, body {
+                        height: auto !important;
+                        min-height: 100% !important;
+                        overflow: visible !important;
+                        background-color: transparent !important;
+                        background-size: 210mm 297mm !important;
+                    }
+                    /* Ensure dashboard frames don't clip */
+                    #wrapper, main {
+                        overflow: visible !important;
+                        height: auto !important;
+                    }
                 }
             `}</style>
-
-            {/* Print Background */}
-            <img 
-                src="/template_bg.png" 
-                className="fixed top-0 left-0 object-cover opacity-100 pointer-events-none" 
-                style={{ 
-                    zIndex: 0, 
-                    width: '210mm', 
-                    height: '297mm',
-                    maxWidth: 'none'
-                }} 
-                alt="" 
-            />
 
             {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
 
