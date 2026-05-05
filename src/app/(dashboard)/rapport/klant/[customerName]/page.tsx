@@ -167,20 +167,10 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                     /* Content adjustments for print */
                     .rp-container {
-                        padding-top: 0 !important;
-                        padding-right: 60px !important;
-                        padding-bottom: 80px !important;
-                        padding-left: 120px !important;
+                        padding: 220px 60px 80px 120px !important; 
                         max-width: none !important;
                         margin: 0 !important;
                     }
-                    .print-only-thead { display: table-header-group; }
-                }
-                
-                @media screen {
-                    .print-only-thead { display: none; }
-                }
-
                     .rp-page-break { page-break-after: always; }
                 }
 
@@ -249,30 +239,24 @@ export default async function KlantRapportPage({ params, searchParams }: {
             {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
 
             <div className="rp-container">
-                <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
-                    <thead className="print-only-thead">
-                        <tr><td style={{ height: '220px', padding: 0, border: 'none' }}></td></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td style={{ padding: 0, border: 'none' }}>
-                            {/* Header */}
-                            <div className="rp-header">
-                                <div className="rp-logo">
-                                    <div className="rp-logo-icon">⚓</div>
-                                    <div>
-                                        <p className="rp-title">Klant Historiek Rapport</p>
-                                        <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
-                                    </div>
-                                </div>
-                                <div className="rp-meta">
-                                    <div>Rapportdatum: <strong>{today}</strong></div>
-                                    <div style={{ marginTop: 4 }}>
-                                        <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Header */}
+                <div className="rp-header">
+                    <div className="rp-logo">
+                        <div className="rp-logo-icon">⚓</div>
+                        <div>
+                            <p className="rp-title">Klant Historiek Rapport</p>
+                            <p className="rp-sub">Specifiek overzicht voor: <span style={{ fontWeight: 800, color: '#1e293b' }}>{report.customerName}</span></p>
+                        </div>
+                    </div>
+                    <div className="rp-meta">
+                        <div>Rapportdatum: <strong>{today}</strong></div>
+                        <div style={{ marginTop: 4 }}>
+                            <span className="rp-badge rp-badge-blue">{report.buoys.length} Boeien</span>
+                        </div>
+                    </div>
+                </div>
 
-                            {report.buoys.length === 0 ? (
+                {report.buoys.length === 0 ? (
                     <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px' }}>
                         Geen boeien gevonden voor deze klant.
                     </div>
@@ -380,9 +364,6 @@ export default async function KlantRapportPage({ params, searchParams }: {
                         </div>
                     ))
                 )}
-                        </td></tr>
-                    </tbody>
-                </table>
                 
                 <div className="rp-footer hidden print:flex">
                     <span style={{ color: 'transparent' }}>_</span>
