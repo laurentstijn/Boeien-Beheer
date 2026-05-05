@@ -694,9 +694,12 @@ export async function retrieveBuoyWithDispositions(id: string, dispositions: Rec
     }
 
     // 3. Archive the deployment record instead of deleting
-    const archiveDate = new Date().toISOString().split('T')[0];
-    
     const { data: buoy } = await supabaseAdmin.from('deployed_buoys').select('metadata').eq('id', id).single();
+    
+    // Use the manually entered pickup date if it exists, otherwise use today's date
+    const existingPickupDate = buoy?.metadata?.customer_pickup_date || buoy?.metadata?.archived_date;
+    const archiveDate = existingPickupDate ? existingPickupDate : new Date().toISOString().split('T')[0];
+
     const newMetadata = {
         ...(buoy?.metadata || {}),
         archived_date: archiveDate,
