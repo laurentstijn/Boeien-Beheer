@@ -355,5 +355,6 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 </table>
             </div>
         </div>
+        </div>
     );
 }
