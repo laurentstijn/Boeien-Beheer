@@ -167,7 +167,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                     /* Content adjustments for print */
                     .rp-container {
-                        padding: 130px 40px 80px 80px !important; 
+                        padding: 220px 60px 80px 120px !important; 
                         max-width: none !important;
                         margin: 0 !important;
                     }
@@ -175,7 +175,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                     .rp-page-break { page-break-after: always; }
                 }
 
-                .rp-container { max-width: 820px; margin: 0 auto; padding: 130px 48px 40px 80px; position: relative; z-index: 10; }
+                .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; }
                 .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #2563eb; padding-bottom:18px; margin-bottom:32px; }
                 .rp-logo { display:flex; align-items:center; gap:10px; }
                 .rp-logo-icon { width:38px; height:38px; background:#2563eb; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
