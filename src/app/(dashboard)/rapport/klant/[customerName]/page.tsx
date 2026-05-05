@@ -141,16 +141,46 @@ export default async function KlantRapportPage({ params, searchParams }: {
                         z-index: 100;
                     }
 
-                    /* Content adjustments for print */
+                /* Content adjustments for print */
+                @media print {
+                    .rp-page-break { page-break-after: always; }
+                    @page {
+                        margin-top: 55mm; /* Clears top header */
+                        margin-left: 30mm; /* Clears left blue line */
+                        margin-right: 15mm;
+                        margin-bottom: 20mm;
+                        size: A4;
+                    }
+                    html, body, #wrapper, main {
+                        height: auto !important;
+                        overflow: visible !important;
+                    }
                     .rp-container {
-                        padding: 220px 60px 80px 120px !important; 
+                        padding: 0 !important;
                         max-width: none !important;
                         margin: 0 !important;
                     }
-                    .rp-page-break { page-break-after: always; }
+                    .print-bg {
+                        position: fixed !important;
+                        top: 0;
+                        left: 0;
+                    }
                 }
 
                 .rp-container { max-width: 820px; margin: 0 auto; padding: 220px 60px 80px 120px; position: relative; z-index: 10; }
+                .print-bg {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 297mm;
+                    z-index: 0;
+                    pointer-events: none;
+                    display: flex;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+                
                 .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #2563eb; padding-bottom:18px; margin-bottom:32px; }
                 .rp-logo { display:flex; align-items:center; gap:10px; }
                 .rp-logo-icon { width:38px; height:38px; background:#2563eb; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
@@ -183,38 +213,26 @@ export default async function KlantRapportPage({ params, searchParams }: {
 
                 .rp-footer { margin-top:40px; border-top:1px solid #e2e8f0; padding-top:14px; display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; }
                 ${isEmbedded ? '.no-embedded { display: none !important; }' : ''}
-                
-                @media print {
-                    .rp-page-break { page-break-after: always; }
-                    @page {
-                        margin: 0;
-                        size: A4;
-                    }
-                    /* Ensure dashboard frames don't clip */
-                    html, body, #wrapper, main {
-                        height: auto !important;
-                        overflow: visible !important;
-                    }
-                }
             `}</style>
 
-            {/* Print Background via IMG tag for forced printing without checkbox */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '297mm', zIndex: 0, pointerEvents: 'none', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
-                <img 
-                    src="/template_bg_hq.png" 
-                    alt="Briefpapier" 
-                    style={{
-                        width: '210mm',
-                        height: '297mm',
-                        objectFit: 'cover',
-                        maxWidth: 'none'
-                    }} 
-                />
-            </div>
+            <div style={{ position: 'relative', width: '100%', minHeight: '100%' }}>
+                {/* Print Background via IMG tag */}
+                <div className="print-bg">
+                    <img 
+                        src="/template_bg_hq.png" 
+                        alt="Briefpapier" 
+                        style={{
+                            width: '210mm',
+                            height: '297mm',
+                            objectFit: 'cover',
+                            maxWidth: 'none'
+                        }} 
+                    />
+                </div>
 
-            {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
+                {!isEmbedded && <div className="no-print" style={{position: 'relative', zIndex: 10}}><PrintButton /></div>}
 
-            <div className="rp-container">
+                <div className="rp-container">
                 {/* Header */}
                 <div className="rp-header">
                     <div className="rp-logo">
