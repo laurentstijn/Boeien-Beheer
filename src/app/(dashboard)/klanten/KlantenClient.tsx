@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { DeployedBuoy } from '@/lib/data';
 import { Customer } from '@/lib/db';
-import { Plus, Users, Search, Building2, Phone, AlignLeft, Edit2, Archive, MapPin, Calendar, FileText } from 'lucide-react';
+import { Plus, Users, Search, Building2, Phone, AlignLeft, Edit2, Archive, MapPin, Calendar, FileText, Layers, X, CheckSquare, Square } from 'lucide-react';
 import { BuoyIcon } from '@/components/BuoyIcon';
 import clsx from 'clsx';
 import { updateCustomer, deleteCustomer } from './actions'; // I will need to create server actions for this
@@ -21,6 +21,10 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
     // For editing/creating
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
+    // Report selection
+    const [selectedReportBuoys, setSelectedReportBuoys] = useState<Set<string>>(new Set());
+    const [showReportPopup, setShowReportPopup] = useState(false);
 
     const filteredCustomers = customers.filter(c => 
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -106,7 +110,10 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
                         {filteredCustomers.map(customer => (
                             <button
                                 key={customer.id}
-                                onClick={() => setSelectedCustomerId(customer.id)}
+                                onClick={() => {
+                                    setSelectedCustomerId(customer.id);
+                                    setSelectedReportBuoys(new Set()); // Reset selections when changing customer
+                                }}
                                 className={clsx(
                                     "w-full text-left p-3 rounded-lg transition-all flex items-start gap-3",
                                     selectedCustomerId === customer.id 
@@ -156,39 +163,84 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
                                         )}
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => { setEditingCustomer(selectedCustomer); setShowEditModal(true); }}
-                                    className="p-2 hover:bg-app-surface-hover rounded-lg text-app-text-secondary transition-colors"
-                                    title="Klant bewerken"
-                                >
-                                    <Edit2 className="w-5 h-5" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setShowReportPopup(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-sm transition-all"
+                                    >
+                                        <Layers className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Rapport Bekijken</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setEditingCustomer(selectedCustomer); setShowEditModal(true); }}
+                                        className="p-2 hover:bg-app-surface-hover border border-app-border rounded-lg text-app-text-secondary transition-colors"
+                                        title="Klant bewerken"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-8">
                                 {/* Actieve Boeien */}
                                 <div>
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-app-text-secondary mb-4 flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-green-500" />
-                                        Actieve Boeien ({activeBuoys.length})
-                                    </h3>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-app-text-secondary flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 text-green-500" />
+                                            Actieve Boeien ({activeBuoys.length})
+                                        </h3>
+                                        <button 
+                                            onClick={() => {
+                                                const allIds = activeBuoys.map(b => b.id);
+                                                const allSelected = allIds.every(id => selectedReportBuoys.has(id));
+                                                const next = new Set(selectedReportBuoys);
+                                                if (allSelected) {
+                                                    allIds.forEach(id => next.delete(id));
+                                                } else {
+                                                    allIds.forEach(id => next.add(id));
+                                                }
+                                                setSelectedReportBuoys(next);
+                                            }}
+                                            className="text-[10px] uppercase font-bold text-blue-500 hover:text-blue-600"
+                                        >
+                                            Alles (de)selecteren
+                                        </button>
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {activeBuoys.map(buoy => (
-                                            <div key={buoy.id} className="p-4 bg-app-bg rounded-xl border border-app-border flex items-start gap-4">
-                                                <BuoyIcon 
-                                                    color={buoy.buoyType?.color || 'yellow'} 
-                                                    type={buoy.buoyType?.name || 'Onbekend'} 
-                                                    size="sm" 
-                                                    className="w-10 h-10 mt-1" 
-                                                />
-                                                <div>
-                                                    <div className="font-bold text-app-text-primary">{buoy.name}</div>
-                                                    <div className="text-xs text-app-text-secondary mt-1">
-                                                        Uitlegdatum: {new Date(buoy.date || '').toLocaleDateString('nl-BE')}
+                                        {activeBuoys.map(buoy => {
+                                            const isSelected = selectedReportBuoys.has(buoy.id);
+                                            return (
+                                                <div 
+                                                    key={buoy.id} 
+                                                    onClick={() => {
+                                                        const next = new Set(selectedReportBuoys);
+                                                        if (isSelected) next.delete(buoy.id);
+                                                        else next.add(buoy.id);
+                                                        setSelectedReportBuoys(next);
+                                                    }}
+                                                    className={clsx(
+                                                        "p-4 rounded-xl border flex items-start gap-4 cursor-pointer transition-colors",
+                                                        isSelected ? "bg-blue-50/50 border-blue-300" : "bg-app-bg border-app-border hover:border-blue-300"
+                                                    )}
+                                                >
+                                                    <div className="pt-1">
+                                                        {isSelected ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5 text-app-text-secondary opacity-30" />}
+                                                    </div>
+                                                    <BuoyIcon 
+                                                        color={buoy.buoyType?.color || 'yellow'} 
+                                                        type={buoy.buoyType?.name || 'Onbekend'} 
+                                                        size="sm" 
+                                                        className="w-10 h-10 mt-1" 
+                                                    />
+                                                    <div>
+                                                        <div className="font-bold text-app-text-primary">{buoy.name}</div>
+                                                        <div className="text-xs text-app-text-secondary mt-1">
+                                                            Uitlegdatum: {new Date(buoy.date || '').toLocaleDateString('nl-BE')}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {activeBuoys.length === 0 && (
                                             <div className="col-span-full p-4 bg-app-bg rounded-xl border border-app-border border-dashed text-sm text-app-text-secondary italic">
                                                 Geen actieve boeien.
@@ -199,21 +251,56 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
 
                                 {/* Historiek / Archief */}
                                 <div>
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-app-text-secondary mb-4 flex items-center gap-2">
-                                        <Archive className="w-4 h-4 text-orange-500" />
-                                        Historiek / Binnengehaalde Boeien ({archivedBuoys.length})
-                                    </h3>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-app-text-secondary flex items-center gap-2">
+                                            <Archive className="w-4 h-4 text-orange-500" />
+                                            Historiek / Binnengehaalde Boeien ({archivedBuoys.length})
+                                        </h3>
+                                        <button 
+                                            onClick={() => {
+                                                const allIds = archivedBuoys.map(b => b.id);
+                                                const allSelected = allIds.every(id => selectedReportBuoys.has(id));
+                                                const next = new Set(selectedReportBuoys);
+                                                if (allSelected) {
+                                                    allIds.forEach(id => next.delete(id));
+                                                } else {
+                                                    allIds.forEach(id => next.add(id));
+                                                }
+                                                setSelectedReportBuoys(next);
+                                            }}
+                                            className="text-[10px] uppercase font-bold text-blue-500 hover:text-blue-600"
+                                        >
+                                            Alles (de)selecteren
+                                        </button>
+                                    </div>
                                     <div className="space-y-4">
-                                        {archivedBuoys.map(buoy => (
-                                            <div key={buoy.id} className="p-4 bg-app-bg rounded-xl border border-app-border">
-                                                <div className="flex items-center justify-between mb-3 border-b border-app-border pb-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <BuoyIcon 
-                                                            color={buoy.buoyType?.color || 'yellow'} 
-                                                            type={buoy.buoyType?.name || 'Onbekend'} 
-                                                            size="sm" 
-                                                            className="w-8 h-8 opacity-70 grayscale-[0.5]" 
-                                                        />
+                                        {archivedBuoys.map(buoy => {
+                                            const isSelected = selectedReportBuoys.has(buoy.id);
+                                            return (
+                                                <div 
+                                                    key={buoy.id} 
+                                                    onClick={() => {
+                                                        const next = new Set(selectedReportBuoys);
+                                                        if (isSelected) next.delete(buoy.id);
+                                                        else next.add(buoy.id);
+                                                        setSelectedReportBuoys(next);
+                                                    }}
+                                                    className={clsx(
+                                                        "p-4 rounded-xl border cursor-pointer transition-colors",
+                                                        isSelected ? "bg-blue-50/50 border-blue-300" : "bg-app-bg border-app-border hover:border-blue-300"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between mb-3 border-b border-app-border pb-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="pt-0.5">
+                                                                {isSelected ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5 text-app-text-secondary opacity-30" />}
+                                                            </div>
+                                                            <BuoyIcon 
+                                                                color={buoy.buoyType?.color || 'yellow'} 
+                                                                type={buoy.buoyType?.name || 'Onbekend'} 
+                                                                size="sm" 
+                                                                className="w-8 h-8 opacity-70 grayscale-[0.5]" 
+                                                            />
                                                         <div>
                                                             <div className="font-bold text-app-text-primary line-through opacity-70">{buoy.name}</div>
                                                             <div className="text-xs text-app-text-secondary flex items-center gap-2 mt-0.5">
@@ -237,7 +324,8 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                         {archivedBuoys.length === 0 && (
                                             <div className="p-4 bg-app-bg rounded-xl border border-app-border border-dashed text-sm text-app-text-secondary italic">
                                                 Geen historische boeien.
@@ -306,6 +394,28 @@ export default function KlantenClient({ initialCustomers, initialBuoys }: Props)
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Popup */}
+            {showReportPopup && selectedCustomer && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowReportPopup(false)} />
+                    <div className="relative w-full max-w-5xl h-[90vh] bg-app-surface border border-app-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-app-border flex justify-between items-center bg-app-bg">
+                            <h2 className="font-bold flex items-center gap-2 text-app-text-primary">
+                                <Layers className="w-5 h-5 text-purple-500" /> 
+                                Klant Historiek Rapport ({selectedReportBuoys.size > 0 ? `${selectedReportBuoys.size} boeien geselecteerd` : 'Alle boeien'})
+                            </h2>
+                            <button onClick={() => setShowReportPopup(false)} className="p-1.5 hover:bg-app-surface-hover rounded-lg text-app-text-secondary transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <iframe
+                            src={`/rapport/klant/${encodeURIComponent(selectedCustomer.name)}?embedded=true${selectedReportBuoys.size > 0 ? `&buoys=${Array.from(selectedReportBuoys).join(',')}` : ''}`}
+                            className="w-full flex-1 bg-white"
+                        />
                     </div>
                 </div>
             )}

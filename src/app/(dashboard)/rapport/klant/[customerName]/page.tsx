@@ -18,7 +18,7 @@ async function getCustomerReport(customerName: string) {
         return null;
     }
 
-    if (!buoysData || buoysData.length === 0) return { customerName, buoys: [] };
+    if (!buoysData || buoysData.length === 0) return { customerName, buoys: [], rawBuoys: [] };
 
     // Fetch maintenance logs for these buoys
     const buoyIds = buoysData.map(b => b.id);
@@ -55,7 +55,8 @@ async function getCustomerReport(customerName: string) {
 
     return {
         customerName,
-        buoys: buoysWithLogs
+        buoys: buoysWithLogs,
+        rawBuoys: buoysData
     };
 }
 
@@ -94,15 +95,20 @@ function formatComponentReplacement(key: string, metadata: any) {
 
 export default async function KlantRapportPage({ params, searchParams }: {
     params: Promise<{ customerName: string }>,
-    searchParams: Promise<{ embedded?: string }>
+    searchParams: Promise<{ embedded?: string, buoys?: string }>
 }) {
     const p = await params;
     const customerName = decodeURIComponent(p.customerName);
-    const { embedded } = await searchParams;
+    const { embedded, buoys } = await searchParams;
     const isEmbedded = embedded === 'true';
 
     const report = await getCustomerReport(customerName);
     if (!report) return notFound();
+
+    if (buoys) {
+        const buoyIds = buoys.split(',');
+        report.buoys = report.buoys.filter(b => buoyIds.includes(b.id));
+    }
 
     const today = fmt(new Date().toISOString());
 
@@ -271,7 +277,29 @@ export default async function KlantRapportPage({ params, searchParams }: {
                                         <td className="rp-timeline-td">-</td>
                                         <td className="rp-timeline-td">
                                             <strong>Initieel Uitgelegd</strong>
-                                            <div className="rp-muted" style={{ marginTop: '4px' }}>Boei werd geplaatst in deze huurperiode.</div>
+                                            <div className="rp-muted" style={{ marginTop: '4px', marginBottom: '8px' }}>Boei werd geplaatst in deze huurperiode.</div>
+                                            {(() => {
+                                                const raw = report.rawBuoys?.find(r => r.id === buoy.id);
+                                                const meta = raw?.metadata || {};
+                                                const parts = [];
+                                                if (meta.chain?.type) parts.push({ label: 'Ketting', value: meta.chain.type });
+                                                if (meta.sinker?.type) parts.push({ label: 'Steen', value: meta.sinker.type });
+                                                if (meta.light?.type) parts.push({ label: 'Lamp', value: meta.light.type });
+                                                if (meta.topmark?.type) parts.push({ label: 'Topteken', value: meta.topmark.type });
+                                                
+                                                if (parts.length > 0) {
+                                                    return (
+                                                        <div style={{ marginTop: '8px' }}>
+                                                            {parts.map(p => (
+                                                                <div key={p.label} className="rp-comp-replace">
+                                                                    <span className="rp-comp-label">{p.label}:</span> Geplaatst: {p.value}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </td>
                                     </tr>
 
