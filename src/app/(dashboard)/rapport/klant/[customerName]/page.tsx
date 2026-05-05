@@ -175,7 +175,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                     .rp-page-break { page-break-after: always; }
                 }
 
-                .rp-container { max-width: 820px; margin: 0 auto; padding: 40px 48px; }
+                .rp-container { max-width: 820px; margin: 0 auto; padding: 40px 48px; position: relative; z-index: 1; }
                 .rp-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #2563eb; padding-bottom:18px; margin-bottom:32px; }
                 .rp-logo { display:flex; align-items:center; gap:10px; }
                 .rp-logo-icon { width:38px; height:38px; background:#2563eb; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; color: white;}
@@ -183,7 +183,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 .rp-sub { font-size:11px; color:#64748b; margin:3px 0 0; }
                 .rp-meta { text-align:right; font-size:11px; color:#64748b; line-height:1.7; }
                 
-                .rp-buoy-section { margin-bottom: 40px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+                .rp-buoy-section { margin-bottom: 40px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; background: white; }
                 .rp-buoy-header { background: #f8fafc; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }
                 .rp-buoy-title { font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; display:flex; justify-content: space-between; align-items: center; }
                 .rp-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:9px; font-weight:700; text-transform:uppercase; margin-right:4px; }
@@ -193,7 +193,7 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 .rp-fl { font-size:9px; font-weight:700; text-transform:uppercase; color:#94a3b8; margin-bottom:2px; }
                 .rp-fv { font-size:12px; font-weight:600; color:#1e293b; }
                 
-                .rp-timeline-table { w-full; border-collapse: collapse; font-size: 11px; width: 100%; }
+                .rp-timeline-table { w-full; border-collapse: collapse; font-size: 11px; width: 100%; background: white; }
                 .rp-timeline-th { text-align: left; padding: 10px 16px; background: #f1f5f9; color: #475569; font-weight: 700; border-bottom: 1px solid #cbd5e1; }
                 .rp-timeline-td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
                 .rp-timeline-tr:last-child .rp-timeline-td { border-bottom: none; }
@@ -210,17 +210,8 @@ export default async function KlantRapportPage({ params, searchParams }: {
                 ${isEmbedded ? '.no-embedded { display: none !important; }' : ''}
             `}</style>
 
-            {/* Print Elements (PDF Template) */}
-            <div className="print-sidebar hidden print:block"></div>
-            <div className="print-header hidden print:block">
-                <img src="/extracted_logo_0.png" alt="Agentschap Maritieme Dienstverlening & Kust" />
-            </div>
-            <div className="print-footer-left hidden print:block">
-                <img src="/extracted_logo_1.png" alt="Vlaanderen is maritiem" />
-            </div>
-            <div className="print-footer-right hidden print:block">
-                agentschapmdk.be
-            </div>
+            {/* Print Background */}
+            <img src="/template_bg.png" className="hidden print:block fixed top-0 left-0 w-screen h-screen object-cover -z-50 opacity-100" style={{ margin: 0, padding: 0 }} alt="" />
 
             {!isEmbedded && <div className="no-print"><PrintButton /></div>}
 
